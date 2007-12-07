@@ -1,0 +1,337 @@
+<?php
+
+/**
+ * @file
+ * Search and Replace Scanner - works on all nodes text content.
+ * 
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function scanner_menu($may_cache) {
+  global $user;
+  $items = array();
+  if ($may_cache) {
+    $items[] = array(
+      'path' => 'admin/content/scanner', 
+      'title' => t('Search and Replace'), 
+      'callback' => 'scanner_view',
+      'access' => ($user->uid == 1),
+    );  
+    $items[] = array(
+      'path' => 'admin/settings/scanner',
+      'callback' => 'drupal_get_form',
+      'callback arguments' => array('scanner_admin_form'), 
+      'type' => MENU_CALLBACK,
+      'access' => ($user->uid == 1),
+    );  
+  }
+  return $items;
+}
+
+/**
+ * Menu callback; presents the scan form and results.
+ */
+function scanner_view() {
+  $search = arg(3);
+  $search = isset($search) ? base64_decode($search) : NULL;
+  if (!is_null($search) && !isset($_POST['form_id'])) { // doing submit?
+    $replace = arg(4);
+    $replace = isset($replace) ? base64_decode($replace) : NULL;
+    if (!is_null($replace)) {
+      $results = scanner_replace($search, $replace);
+    }
+    else {
+      $results = scanner_search($search);
+    }
+    if ($results) {
+      $results = theme('box', t('Scan Results'), $results);
+    }
+    else {
+      $results = theme('box', t('Your scan yielded no results'));
+    }
+
+    // Construct the search form.
+    
+    $output = drupal_get_form('scanner_form', $search, $replace);
+    $output .= $results;
+
+    return $output;
+  }
+  
+  return drupal_get_form('scanner_form', $search);
+}
+
+/**
+ * The search and replace form.
+ *
+ * @param str $search - regex to search for.
+ * @param str $replace - string to substitute.
+ * @return $form
+ */
+function scanner_form($search=NULL, $replace=NULL) {
+  $form = array();
+  $form['find'] = array (
+    '#type' => 'textfield',
+    '#title' => t('Scan for text'),
+    '#default_value' => $search,
+  );
+  $form['replace'] = array (
+    '#type' => 'textfield',
+    '#title' => t('Replacement text'),
+    '#default_value' => $replace,
+  );
+
+  $form['submit_find'] = array(
+    '#type' => 'submit',
+    '#value' => t('Find'),
+  );
+  $form['submit_replace'] = array(
+    '#type' => 'submit',
+    '#value' => t('Replace'),
+  ); 
+  return $form;
+}
+
+/**
+ * Submit the search and replace form.
+ *   This uses a trick taken from search.module, with is to store the
+ * search key in the url and pass it to a new page to actually do the
+ * work.  We also base64 encode the keys, so that the regexp special
+ * characters can be safely passed in the URL.
+ *
+ * @param $form_id
+ * @param $form_values
+ * @return the new path that will be goto'ed.
+ */
+function scanner_form_submit($form_id, $form_values) {
+  $search = trim($form_values['find']);
+  if ($search == '') {
+    form_set_error('find', t('Please enter some keywords.'));
+  }
+
+  $path = 'admin/content/scanner/'. base64_encode($search);
+  
+//  drupal_set_message( print_r($form_values, TRUE) );
+  
+  if($form_values['op']=='Replace') {
+    $replace = trim($form_values['replace']);
+    if ($replace) {
+      $path .= '/'. base64_encode($replace);
+    }
+  }
+    
+  return $path;
+}
+
+/**
+ * Go to the db and search all the selected field and tables for the
+ * regexp string. Also does a php regexp match on the node content to
+ * show all of the hits on the node.
+ *
+ * @param str $search - the regexp.
+ * @return The themed results.
+ */
+function scanner_search( $search ) {
+  drupal_set_message( "Looking for $search." );
+  
+  $tables_map = _scanner_get_selected_tables_map();
+  
+  foreach( $tables_map as $map ) {
+    $table = $map['table'];
+    $field = $map['field'];
+    $result = db_query( "SELECT t.%s as content, t.nid, n.title FROM {%s} t ".
+                        " INNER JOIN {node} n ON t.nid = n.nid ".
+                        " WHERE CAST(%s AS BINARY) REGEXP '.*%s.*'", // BINARY to force case sensative.
+                         $field, $table, $field, $search);
+    drupal_set_message("Scanning $field in $table.");
+    while( $obj = db_fetch_object($result) ){
+      $content = $obj->content;
+      $matches = array();
+      $text = '';
+      $hits = preg_match_all("/(.{0,8})($search)(.{0,8})/", $content, $matches, PREG_SET_ORDER);
+      if ($hits > 0) {
+        foreach( $matches as $match ) {
+          if( $match[1] ) {
+            $text .= '...'. htmlentities($match[1]);
+          }
+          $text .= '<b>'. htmlentities($match[2]) .'</b>';
+          if( $match[3] ) {
+            $text .= htmlentities($match[3]) .'... ';
+          }
+        }
+      }
+      else {
+        $text = "<div class='warning'>Can't display hit. RegEx mismatch.</div>";
+      }
+      $results[] = array(
+        'title' => $obj->title,
+        'link' => url('node/'.$obj->nid),
+        'text' => $text,
+      );
+    }
+  }
+  return theme('scanner_results', $results);  
+}
+
+/**
+ * do a search and replace in the db
+ *
+ * @param str $search - regexp.
+ * @param str $replace - replacement text.
+ */
+function scanner_replace($search, $replace) {
+  $output = "<p>Replacing <b>$search</b> with <b>$replace</b></p>";
+  $updated = 0;
+  $tables_map = _scanner_get_selected_tables_map();
+  foreach( $tables_map as $map ) { 
+    $table = $map['table'];
+    $field = $map['field'];
+    $sql = "UPDATE {$table} SET $field=REPLACE($field, '$search', '$replace') ".
+           "WHERE CAST($field AS BINARY) REGEXP ('$search')";
+    //$output .= "<p>$sql</p>";
+    $output .= "Updating $field in $table.<br/>";
+    db_query( $sql );
+    $updated += db_affected_rows();
+  }
+  $output .= "<p>Updated $updated rows.</p>";
+  return $output;
+}
+
+/**
+ * Search and Replace Settings form.
+ *
+ * @return $form
+ */
+function scanner_admin_form() {
+  drupal_set_title('Scanner Settings');
+  $form['settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Scanner Settings'),
+    '#collapsible' => TRUE,
+  );
+  $table_map = _scanner_get_selected_tables_map();
+  foreach($table_map as $item) {
+    $output .= '<li><b>'. $item['field'] .'</b> in <b>'. $item['table'] .'</b></li>';
+  }
+  $form['settings']['info']['#value'] = '<p>Fields that will be searched.</p><ul>'. $output .'</ul>';
+
+  $form['tables'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Fields that could be searched'),
+    '#collapsible' => TRUE,
+  );
+  $table_map = _scanner_get_all_tables_map();
+  foreach($table_map as $item) {
+    $key = 'scanner_'.$item['field'].'_'.$item['table'];
+    $form['tables'][$key] = array(
+      '#type' => 'checkbox',
+      '#title' => '<b>'. $item['field'] .'</b> '. t('in') .' <b>'. $item['table'] .'</b>',
+      '#default_value' => variable_get($key, true), // default to checked
+    );
+  }
+
+  $form['scanner_custom'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Custom Fields'),
+    '#default_value' => variable_get('scanner_custom', NULL), 
+    '#description' => "one per row, <i>field</i> in <i>table</i>",
+  );
+  
+  return system_settings_form($form);
+}
+
+/**
+ * Valiadate the settings form.
+ *
+ */
+function scanner_admin_form_validate() {
+  
+}
+
+
+// ***************************************************************************
+// Internal Utility Functions ************************************************
+// ***************************************************************************
+
+/**
+ * Get all text fields.
+ *
+ * @return map of fields and tables.
+ */
+function _scanner_get_all_tables_map() {
+  $tables_map[] = array('table' => 'node_revisions', 'field' => 'body'); 
+  $tables_map[] = array('table' => 'node_revisions', 'field' => 'teaser'); 
+  
+  $results = db_query("SELECT field_name, type_name FROM {node_field_instance} WHERE widget_type='text'");
+  while($field=db_fetch_array($results)){
+    $tables_map[] = array('table'=>$field['type_name'], 'field'=>$field['field_name']); 
+  }
+  return $tables_map;
+}
+
+/**
+ * Get the fields that have been selected for scanning.
+ *
+ * @return map of selected fields and tables.
+ */
+function _scanner_get_selected_tables_map() {
+  $tables_map = _scanner_get_all_tables_map();
+  foreach($tables_map as $i=>$item) {
+    $key = 'scanner_'.$item['field'].'_'.$item['table'];
+    if(!variable_get($key, true)) {
+      unset($tables_map[$i]);
+    }
+  }
+  $custom = variable_get('scanner_custom', NULL);
+  preg_match_all( '/(.*) in (.*)/', $custom, $matches, PREG_SET_ORDER );
+  foreach($matches as $match){
+    $tables_map[] = array('table'=>$match[1], 'field'=>$match[2]); 
+  }
+  return $tables_map;
+}
+
+// ***************************************************************************
+// Theme Functions ***********************************************************
+// ***************************************************************************
+
+/**
+ * The the search results.
+ *
+ * @param map $results
+ * @return html str.
+ */
+function theme_scanner_results($results) {
+  $output = '<p>Matched '. count($results) .' nodes.</p>';
+  $output .= '<dl class="scanner-results">';
+
+  foreach ($results as $entry) {
+    $output .= theme('scanner_item', $entry, $type);
+  }
+  $output .= '</dl>';
+  $output .= theme('pager', NULL, 10, 0);
+
+  return $output;
+}
+
+/**
+ * Theme each search result hit.
+ *
+ * @param map $item.
+ * @return html str.
+ */
+function theme_scanner_item($item) {
+  $output = ' <dt class="title"><a href="'. check_url($item['link']) .'">'. check_plain($item['title']) .'</a></dt>';
+  $info = array();
+
+  if (is_array($item['extra'])) {
+    $info = array_merge($info, $item['extra']);
+  }
+  $output .= ' <dd>'. $item['text'] .'</dd>';
+  return $output;
+}
+
+
+
+
