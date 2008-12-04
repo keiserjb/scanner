@@ -16,9 +16,11 @@ among other things.
 
 II. LIMITATIONS:
 
-1. Only works on sites using a MySQL database.
+1. A user can only have one instance of Search and Replace Scanner running at a time.  Attempting to open Scanner in two separate windows to perform replacements at the same time can lead to unknown errors if you encoutner a timeout.
 
-2. Large search and replace actions may not be completed on sites that are 
+2. Only works on sites using a MySQL database.
+
+3. Large search and replace actions may not be completed on sites that are 
 hosted in environments where PHP's max_execution_time variable can't be 
 dynamically expanded. The module automatically attempts to expand the 
 maximum execution time of a script to 10 minutes. (It's often set at 2 minutes.)  
