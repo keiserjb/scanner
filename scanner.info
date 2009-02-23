@@ -2,3 +2,5 @@
 name = Scanner
 description = Do Search and Replace on the content of nodes.
 
+
+core = 6.x

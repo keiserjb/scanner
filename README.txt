@@ -90,6 +90,12 @@ See INSTALL.txt for installation and administration instructions.
 
 VII. CREDITS:
 
+Version 6.x-dev by:
+   - Amit Asaravala
+     Drupal username: aasarava
+     http://www.returncontrol.com
+     amit [at] returncontrol.com
+
 Version 5.x-2.0 by:
    - Amit Asaravala
      Drupal username: aasarava
