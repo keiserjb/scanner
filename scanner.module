@@ -61,31 +61,31 @@ function scanner_menu() {
 
     $items['admin/content/scanner'] = array(
       'title' => 'Search and Replace Scanner',
-      'description' => t('Find (and replace) keywords in all your content.'),
+      'description' => 'Find (and replace) keywords in all your content.',
       'page callback' => 'scanner_view',
       'access arguments' => array('perform search and replace'),
     );
     $items['admin/content/scanner/scan'] = array(
-      'title' => t('Search'),
+      'title' => 'Search',
       'access arguments' => array('perform search and replace'),
       'type' => MENU_DEFAULT_LOCAL_TASK,
     );
     $items['admin/content/scanner/scan/confirm'] = array(
-      'title' => t('Confirm Replace'),
+      'title' => 'Confirm Replace',
       'access arguments' => array('perform search and replace'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('scanner_confirm_form'),
       'type' => MENU_CALLBACK,
     );
     $items['admin/content/scanner/undo/confirm'] = array(
-      'title' => t('Confirm Undo'),
+      'title' => 'Confirm Undo',
       'access arguments' => array('perform search and replace'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('scanner_undo_confirm_form'),
       'type' => MENU_CALLBACK,
     );
     $items['admin/content/scanner/settings'] = array( // Shows up on scanner page as tab.
-      'title' => t('Settings'),
+      'title' => 'Settings',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('scanner_admin_form'),
       'access arguments' => array('administer scanner settings'),
@@ -93,14 +93,14 @@ function scanner_menu() {
       'weight' => 1,
     );
     $items['admin/content/scanner/undo'] = array( // Shows up on scanner page as tab.
-      'title' => t('Undo'),
+      'title' => 'Undo',
       'page callback' => 'scanner_undo_page',
       'access arguments' => array('perform search and replace'),
       'type' => MENU_LOCAL_TASK,
     );
     $items['admin/settings/scanner'] = array( // Shows up on admin page.
       'title' => t('Search and Replace Scanner'),
-      'description' => t('Configure defaults and what fields can be searched and replaced.'),
+      'description' => 'Configure defaults and what fields can be searched and replaced.',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('scanner_admin_form'),
       'access arguments' => array('administer scanner settings'),
