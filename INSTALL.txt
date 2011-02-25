@@ -1,4 +1,3 @@
-$Id$
 
 Scanner Search and Replace
 --------------------------
