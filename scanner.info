@@ -1,5 +1,5 @@
 name = Scanner
 description = Do Search and Replace on the content of nodes.
 
+core = 7.x
 
-core = 6.x

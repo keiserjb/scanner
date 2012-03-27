@@ -7,48 +7,48 @@
 
 
 /**
- * Implementation of hook_schema().
+ * Implements hook_schema().
  */
 function scanner_schema() {
   $schema['scanner'] = array(
-    'description' => t('Holds info on recent replacements in case undo is needed.'),
+    'description' => 'Holds info on recent replacements in case undo is needed.',
     'fields' => array(
       'undo_id' => array(
-        'description' => t('Row identifier'),
+        'description' => 'Row identifier',
         'type' => 'serial',
         'not null' => TRUE,
       ),
       'undo_data' => array(
-        'description' => t('What was changed'),
+        'description' => 'What was changed',
         'type' => 'text',
         'size' => 'big',
         'not null' => TRUE,
       ),
       'undone' => array(
-        'description' => t('Whether the replacement has been undone'),
+        'description' => 'Whether the replacement has been undone',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
       ),
       'searched' => array(
-        'description' => t('Text that was searched for'),
+        'description' => 'Text that was searched for',
         'type' => 'varchar',
         'length' => 256,
         'not null' => TRUE,
       ),
       'replaced' => array(
-        'description' => t('Text that was used as replacement'),
+        'description' => 'Text that was used as replacement',
         'type' => 'varchar',
         'length' => 256,
         'not null' => TRUE,
       ),
       'count' => array(
-        'description' => t('How many fields were modified on replacement'),
+        'description' => 'How many fields were modified on replacement',
         'type' => 'int',
         'not null' => TRUE,
       ),
       'time' => array(
-        'description' => t('How long the replacement took'),
+        'description' => 'How long the replacement took',
         'type' => 'int',
         'not null' => TRUE,
       ),
@@ -60,20 +60,26 @@ function scanner_schema() {
 }
 
 /**
- * Implementation of hook_install().
+ * Implements hook_install().
  */
 function scanner_install() {
   // Create tables.
-  drupal_install_schema('scanner');
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_install_schema('scanner')
 }
 
 /**
- * Implementation of hook_uninstall().
+ * Implements hook_uninstall().
  */
 function scanner_uninstall() {
   // Remove tables.
-  drupal_uninstall_schema('scanner');
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_uninstall_schema('scanner')
 
-  db_query("DELETE FROM {variable} WHERE name LIKE 'scanner_%'");
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query("DELETE FROM {variable} WHERE name LIKE 'scanner_%'") */
+  //db_delete('variable')
+  //->condition('name', 'scanner_%', 'LIKE')
+  //->execute();
 }
 

@@ -1,4 +1,3 @@
-
 Scanner Search and Replace
 --------------------------
 
@@ -50,8 +49,7 @@ searching for "run" with the whole word option selected will filter out
 
 6. Can limit search and replace to published nodes only.
 
-7. Can search and replace on CCK text fields, in addition to node title 
-and body fields.
+7. Can search and replace on CCK text fields, in addition to the node title.
 
 8. Searches can be limited to specific fields in specific node types.
 
@@ -64,7 +62,7 @@ to revert a change.
 a specific replacement action.
 
 12. Can dynamically update teasers after replacements in other fields, or can 
-by updated manually, or not at all.
+by updated manually, or not at all. (Not yet working in D7)
 
 13. Will dynamically expand PHP's maximum execution time for scripts up to 
 10 minutes on servers that support it. This allows complex queries on large 
@@ -79,7 +77,7 @@ V. TODO / KNOWN BUGS:
 bug where multiple search terms on the same line aren't all highlighted. (The 
 hit count is correct, though, and all items are replaced correctly.)
 
-2. Perform more thorough testing of the "custom field" feature.
+2. Perform more thorough testing of the "custom field" feature. (Functionality not yet provided in D7)
 
 
 VI. INSTALLATION AND ADMINISTRATION:
@@ -88,6 +86,11 @@ See INSTALL.txt for installation and administration instructions.
 
 
 VII. CREDITS:
+
+Version 7.x-dev by:
+   - Michael Rossetti
+     Drupal username: MikeyR
+     rossetti [at] mit.edu
 
 Version 6.x-dev by:
    - Amit Asaravala
