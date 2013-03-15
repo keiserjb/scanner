@@ -5,7 +5,6 @@
  * Search and Replace Scanner install - creates necessary tables.
  */
 
-
 /**
  * Implements hook_schema().
  */
@@ -82,4 +81,3 @@ function scanner_uninstall() {
   //->condition('name', 'scanner_%', 'LIKE')
   //->execute();
 }
-
