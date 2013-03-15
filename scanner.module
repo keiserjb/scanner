@@ -479,7 +479,7 @@ function scanner_form_submit($form, &$form_state) {
    the normal form_id_validate and form_id_submit handlers. Any additional
    buttons which need to invoke different validate or submit functionality
    should have button-specific functions. */
-  if ($form_state['values']['op'] == 'Replace') {
+  if ($form_state['values']['op'] == t('Replace')) {
     $_SESSION['scanner_status'] = SCANNER_STATUS_GO_CONFIRM;
   }
   else {
