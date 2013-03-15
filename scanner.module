@@ -133,7 +133,7 @@ function scanner_theme() {
       ),
     ),
     'scanner_replace_item' => array(
-      'file' => 'scanner.theme.ince',
+      'file' => 'scanner.theme.inc',
       'variables' => array(
         'item' => NULL,
       ),
