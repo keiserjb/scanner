@@ -1077,7 +1077,7 @@ function scanner_execute($searchtype = 'search') {
   } //end foreach
 
   // if completed
-  if (!$shutting_down) {
+  if (isset($shutting_down) && !$shutting_down) {
     variable_del('scanner_partially_processed_' . $user->uid);
     variable_del('scanner_partial_undo_' . $user->uid);
   }
