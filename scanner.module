@@ -235,7 +235,8 @@ function scanner_view() {
       $results = t('Your search yielded no results.');
     }
 
-    $output = drupal_render(drupal_get_form('scanner_form'));
+    $scanner_form = drupal_get_form('scanner_form');
+    $output = drupal_render($scanner_form);
     $output .= $results;
 
     //clear any old search form input:
@@ -254,7 +255,8 @@ function scanner_view() {
     return $output;
   }
 
-  $output .= drupal_render(drupal_get_form('scanner_form'));
+  $scanner_form = drupal_get_form('scanner_form');
+  $output = drupal_render($scanner_form);
 
   return $output;
 }
