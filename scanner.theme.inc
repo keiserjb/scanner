@@ -64,7 +64,7 @@ function theme_scanner_replace_results($variables) {
     // TODO: use pager to split up results
   }
   else {
-    drupal_set_message(t('Sorry, we found 0 matches.'));
+    drupal_set_message(t('No matches found. Check the !url for fields that can be searched.', array('!url' => l(t('settings'), 'admin/content/scanner/settings'))), 'warning');
   }
 
   return $output;
