@@ -896,6 +896,8 @@ function scanner_execute($searchtype = 'search') {
     $table = $map['table'];
     $field = $map['field'];
     $type  = $map['type'];
+    $field_collection = isset($map['field_collection']) ? $map['field_collection'] : NULL;
+    $field_collection_table = isset($map['field_collection']) ? $map['field_collection_table'] : NULL;
 
     $query_params = array($field, $table, $type, $field, $search_db);
     if (!empty($join)) {
@@ -906,18 +908,21 @@ function scanner_execute($searchtype = 'search') {
 
     $query = db_select($table, 't');
     if ($table == 'node_revision') {
-        $nid = 'nid';
         $vid = 'vid';
     }
     else{
         $field = $field . '_value';
-        $nid = 'entity_id';
         $vid = 'revision_id';
     }
-    $query->join('node', 'n', 't.' . $vid . ' = n.vid'); //Must use vid and revision_id here.  Make sure it saves as new revision.
+    if (isset($field_collection_table)) {
+        $query->join($field_collection_table, 'fc', 't.entity_id = fc.' . $field_collection . '_value AND t.revision_id = fc.' . $field_collection . '_value');
+        $query->join('node', 'n', 'fc.entity_id = n.nid AND fc.revision_id = n.vid');
+    } else {
+        $query->join('node', 'n', 't.' . $vid . ' = n.vid'); //Must use vid and revision_id here.  Make sure it saves as new revision.
+    }
     if (is_array($terms) && count($terms)) {
         $db_or = db_or();
-        $query->join('taxonomy_index', 'tx', 't.' . $nid . ' = tx.nid');
+        $query->join('taxonomy_index', 'tx', 'n.nid = tx.nid');
         foreach ($terms as $term) {
             $db_or->condition('tx.tid', $term);
         }
@@ -1241,30 +1246,52 @@ function _scanner_get_all_tables_map() {
     }
   }
 
+  $all_field_records = array();
+
   if (module_exists('field')) {
+    $query = db_select('field_config_instance', 'fci');
+    $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
+    $query->fields('fci', array('field_name', 'bundle'));
+    $query->condition('fci.entity_type', 'node');
+    $query->condition('fc.module', 'text', '=');
+    $query->orderBy('bundle', 'ASC');
 
-     $query = db_select('field_config_instance', 'f');
-     $query->join('field_config', 'fc', 'f.field_name = fc.field_name');
-     $query->fields('f', array('field_name', 'bundle'))
-           ->condition('f.entity_type', 'node')
-           ->condition('fc.module', 'text', '=')
-           ->orderBy('bundle', 'ASC');
+    $result = $query->execute();
 
+    foreach ($result as $record) {
+      $all_field_records[] = $record;
+    }
+  }
 
-     $result = $query->execute();
+  if (module_exists('field_collection')) {
+    // TODO Handle nested field_collections - i.e. field_collections inside field_collections
+    $query = db_select('field_config_instance', 'fci_fc');
+    $query->join('field_config', 'fc_fc', 'fci_fc.field_name = fc_fc.field_name');
+    $query->join('field_config_instance', 'fci_field', 'fci_field.bundle = fc_fc.field_name');
+    $query->join('field_config', 'fc_field', 'fci_field.field_name = fc_field.field_name');
+    $query->fields('fci_field', array('field_name'));
+    $query->fields('fci_fc', array('bundle'));
+    $query->addField('fc_fc', 'field_name', 'field_collection_name');
+    $query->condition('fci_field.entity_type', 'field_collection_item');
+    $query->condition('fci_fc.entity_type', 'node');
+    $query->condition('fc_field.module', 'text', '=');
+    $query->orderBy('bundle', 'ASC');
 
-     foreach ($result as $record) {
+    $result = $query->execute();
 
-         $table = 'field_revision_' . $record->field_name;
+    foreach ($result as $record) {
+      $all_field_records[] = $record;
+    }
+  }
 
-         $tables_map[] = array(
-             'type' => $record->bundle,
-             'field' => $record->field_name,
-             'table' => $table,
-         );
-
-     }
-
+  foreach ($all_field_records as $record) {
+    $tables_map[] = array(
+      'type' => $record->bundle,
+      'field' => $record->field_name,
+      'table' => 'field_revision_' . $record->field_name,
+      'field_collection' => isset($record->field_collection_name) ? $record->field_collection_name : NULL,
+      'field_collection_table' => isset($record->field_collection_name) ? 'field_revision_' . $record->field_collection_name : NULL
+    );
   }
 
   return $tables_map;
