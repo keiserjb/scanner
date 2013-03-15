@@ -147,12 +147,10 @@ function scanner_theme() {
 function scanner_permission() {
   return array(
     'administer scanner settings' => array(
-      'title' => t('administer scanner settings'),
-      'description' => t('TODO Add a description for \'administer scanner settings\''),
+      'title' => t('Administer scanner settings'),
     ),
     'perform search and replace' => array(
-      'title' => t('perform search and replace'),
-      'description' => t('TODO Add a description for \'perform search and replace\''),
+      'title' => t('Perform search and replace'),
     ),
   );
 }
@@ -195,15 +193,15 @@ function scanner_view() {
   if (isset($_SESSION['scanner_search'])) {
     $search = $_SESSION['scanner_search'];
   }
-  else{
+  else {
     $search = NULL;
   }
 
   if (isset($_SESSION['scanner_status'])) {
     $status = $_SESSION['scanner_status'];
   }
-  else{
-      $status = NULL;
+  else {
+    $status = NULL;
   }
 
   if (!is_NULL($search) && $status >= SCANNER_STATUS_GO_SEARCH) {
@@ -242,7 +240,7 @@ function scanner_view() {
     unset($_SESSION['scanner_published']);
     unset($_SESSION['scanner_regex']);
     unset($_SESSION['scanner_terms']);
-    //clear old status:
+    // Clear old status.
     unset($_SESSION['scanner_status']);
 
     return $output;
