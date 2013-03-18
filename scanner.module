@@ -991,9 +991,9 @@ function scanner_execute($searchtype = 'search') {
 
             $text .= '<strong>' . htmlentities($match[0], ENT_COMPAT, 'UTF-8') . '</strong>';
 
-            if ($append = substr($content, $match[1]+strlen($search_php), $context_length)) {
+            if ($append = substr($content, $match[1]+strlen($match[0]), $context_length)) {
               $text .= htmlentities($append, ENT_COMPAT, 'UTF-8');
-              if (strlen($content) - ($match[1]+strlen($search_php)) > $context_length) {
+              if (strlen($content) - ($match[1]+strlen($match[0])) > $context_length) {
                 $text .= '...';
               }
             }
