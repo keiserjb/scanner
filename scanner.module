@@ -1002,7 +1002,9 @@ function scanner_execute($searchtype = 'search') {
           $text .= '</ul>';
         }
         else {
-          $text = "<div class='warning'>" . t("Can't display search result due to conflict between search term and internal preg_match_all function.") . '</div>';
+          $text = '<div class="messages warning"><h2 class="element-invisible">Warning message</h2>' .
+                   t("Can't display search result due to conflict between search term and internal preg_match_all function.") .
+                  '</div>';
         }
 
         $results[] = array(
