@@ -970,18 +970,36 @@ function scanner_execute($searchtype = 'search') {
       // Search.
       if ($searchtype == 'search') {
         // Pull out the terms and highlight them for display in search results.
-        $regexstr = "/(.{0,130}?)($search_php)(.{0,130})/$flag";
-        $hits = preg_match_all($regexstr, $content, $matches, PREG_SET_ORDER);
+        $regexstr = "/$search_php/$flag";
+        $hits = preg_match_all($regexstr, $content, $matches, PREG_OFFSET_CAPTURE);
         if ($hits > 0) {
-          foreach ($matches as $match) {
-            if ($match[1]) {
-              $text .= '...' . htmlentities($match[1], ENT_COMPAT, 'UTF-8');
+          $context_length = 70;
+          $text .= '<ul>';
+          foreach ($matches[0] as $match) {
+            $text .= '<li>';
+            // Don't want substr to wrap.
+            $start = ($match[1]-$context_length > 0 ? $match[1]-$context_length : 0);
+            // If the match is close to the beginning of the string, need less context.
+            $length = ($match[1] >= $context_length ? $context_length : $match[1]);
+
+            if ($prepend = substr($content, $start, $length)) {
+              if ($length == $context_length) {
+                $text .= '...';
+              }
+              $text .= htmlentities($prepend, ENT_COMPAT, 'UTF-8');
             }
-            $text .= '<strong>' . htmlentities($match[2], ENT_COMPAT, 'UTF-8') . '</strong>';
-            if ($match[3]) {
-              $text .= htmlentities($match[3], ENT_COMPAT, 'UTF-8') . '...';
+
+            $text .= '<strong>' . htmlentities($match[0], ENT_COMPAT, 'UTF-8') . '</strong>';
+
+            if ($append = substr($content, $match[1]+strlen($search_php), $context_length)) {
+              $text .= htmlentities($append, ENT_COMPAT, 'UTF-8');
+              if (strlen($content) - ($match[1]+strlen($search_php)) > $context_length) {
+                $text .= '...';
+              }
             }
+            $text .= '</li>';
           }
+          $text .= '</ul>';
         }
         else {
           $text = "<div class='warning'>" . t("Can't display search result due to conflict between search term and internal preg_match_all function.") . '</div>';
