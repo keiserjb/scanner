@@ -840,25 +840,21 @@ function scanner_execute($searchtype = 'search') {
   // Case 1.
   if ($wholeword && $regex) {
     $where = "[[:<:]]" . $search . "[[:>:]]";
-    $search_db = $preceded . $search . $followed;
     $search_php = '\b' . $preceded_php . $search . $followed_php . '\b';
   }
   // Case 2.
   elseif ($wholeword && !$regex) {
     $where = "[[:<:]]" . $search . "[[:>:]]";
-    $search_db = $preceded . addcslashes($search, SCANNER_REGEX_CHARS) . $followed;
     $search_php = '\b' . $preceded_php . addcslashes($search, SCANNER_REGEX_CHARS) . $followed_php . '\b';
   }
   // Case 3.
   elseif (!$wholeword && $regex) {
     $where = $search;
-    $search_db = $preceded . $search . $followed;
     $search_php = $preceded_php . $search . $followed_php;
   }
   // Case 4.
   else { //!wholeword and !regex:
     $where = $search;
-    $search_db = $preceded . addcslashes($search, SCANNER_REGEX_CHARS) . $followed;
     $search_php = $preceded_php . addcslashes($search, SCANNER_REGEX_CHARS) . $followed_php;
   }
 
@@ -883,13 +879,6 @@ function scanner_execute($searchtype = 'search') {
     $type = $map['type'];
     $field_collection = isset($map['field_collection']) ? $map['field_collection'] : NULL;
     $field_collection_table = isset($map['field_collection']) ? $map['field_collection_table'] : NULL;
-
-    $query_params = array($field, $table, $type, $field, $search_db);
-    if (!empty($join)) {
-      $query_params = array_merge($query_params, $terms_params);
-    }
-
-    // TODO Please convert this statement to the D7 database API syntax.
 
     $query = db_select($table, 't');
     if ($table == 'node_revision') {
@@ -919,10 +908,10 @@ function scanner_execute($searchtype = 'search') {
     $query->fields('n', array('nid', 'title'));
     $query->condition('n.type', $type, '=');
     if ($mode) {
-      $query->condition('t.' . $field, $search_db, 'REGEXP BINARY');
+      $query->condition('t.' . $field, $where, 'REGEXP BINARY');
     }
     else {
-      $query->condition('t.' . $field, $search_db, 'REGEXP');
+      $query->condition('t.' . $field, $where, 'REGEXP');
     }
     if ($published) {
       $query->condition('n.status', '1', '=');
