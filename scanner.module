@@ -809,7 +809,7 @@ function scanner_execute($searchtype = 'search') {
   }
 
   if ($searchtype == 'search') {
-    drupal_set_message(t('Scanning for: [%search] ...', array('%search' => $search)));
+    drupal_set_message(t('Searching for: [%search] ...', array('%search' => $search)));
   }
   else { //searchtype == 'replace'
     drupal_set_message(t('Replacing [%search] with [%replace] ...', array('%search' => $search, '%replace' => $replace)));
