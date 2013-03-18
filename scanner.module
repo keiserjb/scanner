@@ -839,22 +839,22 @@ function scanner_execute($searchtype = 'search') {
 
   // Case 1.
   if ($wholeword && $regex) {
-    $where = "[[:<:]]" . $search . "[[:>:]]";
+    $where = "[[:<:]]" . $preceded . $search . $followed . "[[:>:]]";
     $search_php = '\b' . $preceded_php . $search . $followed_php . '\b';
   }
   // Case 2.
   elseif ($wholeword && !$regex) {
-    $where = "[[:<:]]" . $search . "[[:>:]]";
+    $where = "[[:<:]]" . $preceded . addcslashes($search, SCANNER_REGEX_CHARS) . $followed . "[[:>:]]";
     $search_php = '\b' . $preceded_php . addcslashes($search, SCANNER_REGEX_CHARS) . $followed_php . '\b';
   }
   // Case 3.
   elseif (!$wholeword && $regex) {
-    $where = $search;
+    $where = $preceded . $search . $followed;
     $search_php = $preceded_php . $search . $followed_php;
   }
   // Case 4.
   else { //!wholeword and !regex:
-    $where = $search;
+    $where = $preceded . addcslashes($search, SCANNER_REGEX_CHARS) . $followed;
     $search_php = $preceded_php . addcslashes($search, SCANNER_REGEX_CHARS) . $followed_php;
   }
 
