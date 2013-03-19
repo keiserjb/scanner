@@ -89,7 +89,7 @@ function scanner_menu() {
     'access arguments' => array('perform search and replace'),
     'type' => MENU_LOCAL_TASK,
   );
-  $items['admin/config/scanner'] = array(// Shows up on admin page.
+  $items['admin/config/content/scanner'] = array(// Shows up on admin page.
     'title' => 'Search and Replace Scanner',
     'description' => 'Configure defaults and what fields can be searched and replaced.',
     'page callback' => 'drupal_get_form',
