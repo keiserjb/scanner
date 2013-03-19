@@ -1008,51 +1008,46 @@ function scanner_execute($searchtype = 'search') {
       // Replace (and check to see if already processed).
       elseif (!isset($processed[$field][$row->nid])) {
         $hits = 0;
-        $newcontent = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
-        $thenode = node_load($row->nid);
+        $content_new = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
+        $node = node_load($row->nid);
 
-        // See if we're dealing with a CCK text field and therefore
-        // need to strip the "_value" off the end.
         preg_match('/(.+)_value$/', $field, $matches);
-        if (empty($matches[0])) { //if not CCK text field:
-          $thenode->$field = $newcontent;
+        if (!empty($matches[0])) {
+           // Text Field or Text Area.
+          $node->{$matches[1]}[$node->language][0]['value'] = $content_new;
         }
         else {
-          //Is this the best way to copy the new content back into the node's CCK field???
-          //$tmpstr = ('$thenode->' . $matches[1] . '[$thenode->language][0]["value"] = $newcontent;');
-          //eval($tmpstr);
-
-          // This is a better way.
-          $thenode->{$matches[1]}[$thenode->language][0]["value"] = $newcontent;
+           // Other type such as a Title.
+          $node->$field = $content_new;
         }
 
         // A revision only created for the first change of the node.
         // Subsequent changes of the same node do not generate additional revisions.
-        if (!isset($undo_data[$thenode->nid]['new_vid'])) {
-          $thenode->revision = TRUE;
-          $thenode->log = t('@name replaced %search with %replace via Scanner Search and Replace module.', array('@name' => $user->name, '%search' => $search, '%replace' => $replace));
-          $undo_data[$thenode->nid]['old_vid'] = $thenode->vid;
+        if (!isset($undo_data[$node->nid]['new_vid'])) {
+          $node->revision = TRUE;
+          $node->log = t('@name replaced %search with %replace via Scanner Search and Replace module.', array('@name' => $user->name, '%search' => $search, '%replace' => $replace));
+          $undo_data[$node->nid]['old_vid'] = $node->vid;
         }
 
         /* TODO MAKE THIS WORK WITH SUMMARY, TEASERS DON'T EXIST
         if (variable_get('scanner_rebuild_teasers', 1)) {
-          $thenode->teaser = node_teaser($thenode->body, $thenode->format);
+          $node->teaser = node_teaser($node->body, $node->format);
         }
         */
 
-        node_save($thenode);
+        node_save($node);
 
         // Array to log completed fields in case of shutdown.
         $processed[$field][$row->nid] = TRUE;
 
         // Undo data construction.
-        $undo_data[$thenode->nid]['new_vid'] = $thenode->vid; // Now set to updated vid after node_save().
+        $undo_data[$node->nid]['new_vid'] = $node->vid; // Now set to updated vid after node_save().
         $results[] = array(
-          'title' => $thenode->title,
-          'type' => $thenode->type,
+          'title' => $node->title,
+          'type' => $node->type,
           'count' => $hits,
           'field' => $field,
-          'nid' => $thenode->nid,
+          'nid' => $node->nid,
         );
       }
     } // end foreach
