@@ -5,28 +5,19 @@
  * Search and Replace Scanner - works on all nodes text content.
  *
  * The Search and Replace Scanner can do regular expression matches
- * against the title, body and CCK text content fields on all nodes in your system.
+ * against a configurable list of title, body and text fields.
  * This is useful for finding html strings that Drupal's normal search will
- * ignore. And it can replace the matched text. Very handy if you are changing
+ * ignore. It can also replace the matched text. Very handy if you are changing
  * the name of your company, or are changing the URL of a link included
  * multiple times in multiple nodes.
- *
- * The module allow you to configure which fields and tables to work with,
- * and also to add in custom tables and fields for modules that don't use CCK.
  *
  * Limitations:
  *  Only works with Mysql
  *
  * Warning:
- *  This is a very powerful tool, and as such is very dangerous.  You can
- *  easy distroy your entire site with it.  Be sure to backup your database
- *  before using it.  No, really.
- *
- * Todo:
- *  Provide better highlighting for search results
- *   - right now there's a known bug where multiple search terms
- *     on the same line aren't all highlighted. (The hit count
- *     is correct, though, and all items are replaced correctly.)
+ *  This is a very powerful tool, and as such is very dangerous. You can
+ *  easy distroy your entire site with it. Be sure to backup your database
+ *  before using it. No, really.
  *
  * Credits:
  *  Version 5.x-1.0 by:
@@ -1191,8 +1182,6 @@ function scanner_admin_form($node, &$form_state) {
 
 /**
  * Get all text fields.
- * This is all very fragle based on how CCK stores fields.
- * Works for CCK 1.6.
  *
  * @return map of fields and tables.
  */
