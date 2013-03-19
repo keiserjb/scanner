@@ -1082,8 +1082,6 @@ function scanner_execute($searchtype = 'search') {
  * @return $form
  */
 function scanner_admin_form($node, &$form_state) {
-  drupal_set_title(t('Scanner Settings'));
-
   $form['settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Scanner Options'),
