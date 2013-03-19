@@ -1084,30 +1084,9 @@ function scanner_execute($searchtype = 'search') {
 function scanner_admin_form($node, &$form_state) {
   drupal_set_title(t('Scanner Settings'));
 
-  $output= '';
-
-  $table_map = _scanner_get_selected_tables_map();
-  if ($table_map) {
-    $output = '<p>Fields that will be searched (in [nodetype: fieldname] order):</p><ul>' . $output . '</ul>';
-    sort($table_map);
-    foreach ($table_map as $item) {
-      $output .= '<li><b>' . $item['type'] . ':</b> ' . $item['field'] . '</li>';
-    }
-  }
-  else {
-    $output = '<p>There are currently no selected elements to be scanned</p>';
-  }
-
-  $form['selected'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Current Settings'),
-    '#collapsible' => TRUE,
-    '#description' => filter_xss($output, $allowed_tags = array('b', 'ul', 'li', 'p')),
-  );
   $form['settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Scanner Options'),
-    '#collapsible' => TRUE,
   );
   $form['settings']['scanner_mode'] = array(
     '#type' => 'checkbox',
@@ -1157,9 +1136,8 @@ function scanner_admin_form($node, &$form_state) {
 
   $form['tables'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Fields that can be searched'),
+    '#title' => t('Fields that will be searched'),
     '#description' => t('Fields are listed in [nodetype: fieldname] order:'),
-    '#collapsible' => TRUE,
   );
 
   $table_map = _scanner_get_all_tables_map();
@@ -1168,8 +1146,8 @@ function scanner_admin_form($node, &$form_state) {
     $key = 'scanner_' . $item['field'] . '_' . $item['table'] . '_' . $item['type'];
     $form['tables'][$key] = array(
       '#type' => 'checkbox',
-      '#title' => filter_xss('<b>' . $item['type'] . ':</b> ' . $item['field'], $allowed_values = array('b', 'p')),
-      '#default_value' => variable_get($key, FALSE), // default to not checked
+      '#title' => filter_xss('<strong>' . $item['type'] . ':</strong> ' . $item['field'], $allowed_values = array('strong', 'p')),
+      '#default_value' => variable_get($key, FALSE),
     );
   }
 
