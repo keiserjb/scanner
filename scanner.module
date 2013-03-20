@@ -397,7 +397,7 @@ function scanner_form($form, &$form_state) {
     $options = array();
 
     foreach ($vocabularies as $vid => $vocabulary) {
-      if (in_array($vid, $scanner_vocabularies) ) {
+      if (in_array($vid, $scanner_vocabularies)) {
         $tree = taxonomy_get_tree($vid);
         if ($tree && (count($tree) > 0)) {
           $options[$vocabulary->name] = array();
@@ -867,6 +867,7 @@ function scanner_execute($searchtype = 'search') {
   foreach ($tables_map as $map) {
     $table = $map['table'];
     $field = $map['field'];
+    $field_summary = NULL;
     $type = $map['type'];
     $field_collection = isset($map['field_collection']) ? $map['field_collection'] : NULL;
     $field_collection_table = isset($map['field_collection']) ? $map['field_collection_table'] : NULL;
@@ -876,6 +877,9 @@ function scanner_execute($searchtype = 'search') {
       $vid = 'vid';
     }
     else {
+      if (db_field_exists($table, $field . '_summary')) {
+        $field_summary = $field . '_summary';
+      }
       $field = $field . '_value';
       $vid = 'revision_id';
     }
@@ -896,14 +900,20 @@ function scanner_execute($searchtype = 'search') {
       $query->condition($db_or);
     }
     $query->addField('t', $field, 'content');
+    if (isset($field_summary)) {
+      $query->addField('t', $field_summary, 'summary');
+    }
     $query->fields('n', array('nid', 'title'));
     $query->condition('n.type', $type, '=');
-    if ($mode) {
-      $query->condition('t.' . $field, $where, 'REGEXP BINARY');
+
+    $or = db_or();
+    $binary = $mode ? ' BINARY' : '';
+    $or->condition('t.' . $field, $where, 'REGEXP' . $binary);
+    if (isset($field_summary)) {
+      $or->condition('t.' . $field_summary, $where, 'REGEXP' . $binary);
     }
-    else {
-      $query->condition('t.' . $field, $where, 'REGEXP');
-    }
+    $query->condition($or);
+
     if ($published) {
       $query->condition('n.status', '1', '=');
     }
@@ -913,6 +923,7 @@ function scanner_execute($searchtype = 'search') {
 
     foreach ($result as $row) {
       $content = $row->content;
+      $summary = isset($row->summary) ? $row->summary : '';
       $matches = array();
       $text = '';
 
@@ -947,37 +958,53 @@ function scanner_execute($searchtype = 'search') {
         }
       }
 
+      $node = node_load($row->nid);
+
       // Search.
       if ($searchtype == 'search') {
-        // Pull out the terms and highlight them for display in search results.
         $regexstr = "/$search_php/$flag";
+        $matches = array('0' => array());
+
+        // Assign matches in the base text field to $matches[0].
         $hits = preg_match_all($regexstr, $content, $matches, PREG_OFFSET_CAPTURE);
+        // Assign summary matches to $matches[1].
+        $hits += preg_match_all($regexstr, $summary, $matches_summary, PREG_OFFSET_CAPTURE);
+
+        $matches = array_merge($matches, $matches_summary);
+
         if ($hits > 0) {
           $context_length = 70;
           $text .= '<ul>';
-          foreach ($matches[0] as $match) {
-            $text .= '<li>';
-            // Don't want substr to wrap.
-            $start = ($match[1]-$context_length > 0 ? $match[1]-$context_length : 0);
-            // If the match is close to the beginning of the string, need less context.
-            $length = ($match[1] >= $context_length ? $context_length : $match[1]);
-
-            if ($prepend = substr($content, $start, $length)) {
-              if ($length == $context_length) {
-                $text .= '...';
+          foreach ($matches as $key => $item) {
+            $string = $key == 0 ? $content : $summary;
+            foreach ($item as $match) {
+              $text .= '<li>';
+              if ($key == 1) {
+                $text .= '<i>Summary:</i> ';
               }
-              $text .= htmlentities($prepend, ENT_COMPAT, 'UTF-8');
-            }
 
-            $text .= '<strong>' . htmlentities($match[0], ENT_COMPAT, 'UTF-8') . '</strong>';
+              // Don't want substr to wrap.
+              $start = $match[1]-$context_length > 0 ? $match[1]-$context_length : 0;
+              // If the match is close to the beginning of the string, need less context.
+              $length = $match[1] >= $context_length ? $context_length : $match[1];
 
-            if ($append = substr($content, $match[1]+strlen($match[0]), $context_length)) {
-              $text .= htmlentities($append, ENT_COMPAT, 'UTF-8');
-              if (strlen($content) - ($match[1]+strlen($match[0])) > $context_length) {
-                $text .= '...';
+              if ($prepend = substr($string, $start, $length)) {
+                if ($length == $context_length) {
+                  $text .= '...';
+                }
+                $text .= htmlentities($prepend, ENT_COMPAT, 'UTF-8');
               }
+
+              $text .= '<strong>' . htmlentities($match[0], ENT_COMPAT, 'UTF-8') . '</strong>';
+
+              if ($append = substr($string, $match[1]+strlen($match[0]), $context_length)) {
+                $text .= htmlentities($append, ENT_COMPAT, 'UTF-8');
+                if (strlen($string) - ($match[1]+strlen($match[0])) > $context_length) {
+                  $text .= '...';
+                }
+              }
+              $text .= '</li>';
             }
-            $text .= '</li>';
           }
           $text .= '</ul>';
         }
@@ -1000,12 +1027,17 @@ function scanner_execute($searchtype = 'search') {
       elseif (!isset($processed[$field][$row->nid])) {
         $hits = 0;
         $content_new = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
-        $node = node_load($row->nid);
 
         preg_match('/(.+)_value$/', $field, $matches);
         if (!empty($matches[0])) {
-           // Text Field or Text Area.
+          // Text Field or Text Area.
           $node->{$matches[1]}[$node->language][0]['value'] = $content_new;
+          // Summary.
+          if (isset($node->{$matches[1]}[$node->language][0]['summary'])) {
+            $summary = $node->{$matches[1]}[$node->language][0]['summary'];
+            $node->{$matches[1]}[$node->language][0]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
+            $hits += $hits_summary;
+          }
         }
         else {
            // Other type such as a Title.
@@ -1019,12 +1051,6 @@ function scanner_execute($searchtype = 'search') {
           $node->log = t('@name replaced %search with %replace via Scanner Search and Replace module.', array('@name' => $user->name, '%search' => $search, '%replace' => $replace));
           $undo_data[$node->nid]['old_vid'] = $node->vid;
         }
-
-        /* TODO MAKE THIS WORK WITH SUMMARY, TEASERS DON'T EXIST
-        if (variable_get('scanner_rebuild_teasers', 1)) {
-          $node->teaser = node_teaser($node->body, $node->format);
-        }
-        */
 
         node_save($node);
 
@@ -1106,14 +1132,7 @@ function scanner_admin_form($node, &$form_state) {
     '#title' => t('Default: Search Published Nodes Only'),
     '#default_value' => variable_get('scanner_published', 1),
   );
-  /* TURN OFF TEASER (SUMMARY) REBUILD FOR NOW
-  $form['settings']['scanner_rebuild_teasers'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Rebuild Teasers on Replace'),
-    '#default_value' => variable_get('scanner_rebuild_teasers', 1),
-    '#description' => t('If this box is checked: The teasers for any nodes that are modified in a search-and-replace action will be rebuilt to reflect the replacements in other fields; you do not need to check any teaser fields for nodes in the "Fields" section below.  If this box is unchecked: Teasers will remain untouched; you can select specific teaser fields below to include in search-and-replaces.'),
-  );
-    */
+
   if (module_exists('taxonomy')) {
     $vocabularies = taxonomy_get_vocabularies();
 
