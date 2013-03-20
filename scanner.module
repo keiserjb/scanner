@@ -428,38 +428,10 @@ function scanner_form_submit($form, &$form_state) {
  * @ingroup forms
  */
 function scanner_confirm_form($form, &$form_state) {
-  drupal_add_css('
-    #scanner-confirm-form .scanner-buttons .scanner-button-msg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 100;
-      width: 100%;
-      height: 100%;
-      background-color: #000;
-      opacity: 0.75;
-      font-size:1.2em;
-    }
-    #scanner-confirm-form .scanner-buttons .scanner-button-msg p {
-      color: #fff;
-    }
-  ', array('type' => 'inline'));
-
-  // Javascript to prevent further clicks on confirmation button after it's clicked once.
-  // Unfortunately we can't just use css disable to disable the button because then
-  // the op values aren't sent to drupal correctly.
-  drupal_add_js("
-    jQuery(document).ready(function() {
-      jQuery('input[type=submit][value=". str_replace('\'', '\\\'', t('Yes, Continue')) . "]').click(function() {
-        jQuery('.scanner-buttons').css('position','relative')
-          .append('<div class=\"scanner-button-msg\"><p>". str_replace('\'', '\\\'', t('Replacing items... please wait...')) . "</p></div>')
-        jQuery('.scanner-button-msg').click(function() { return false; });
-        return true;
-      });
-    });
-  ", array('type' => 'inline', 'group' => JS_DEFAULT));
-
   $form = array();
+
+  $form['#attached']['js'][] = drupal_get_path('module', 'scanner') . '/scanner.js';
+  $form['#attached']['css'][] = drupal_get_path('module', 'scanner') . '/scanner.css';
 
   $search    = $_SESSION['scanner_search'];
   $replace   = $_SESSION['scanner_replace'];
