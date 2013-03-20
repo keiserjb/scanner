@@ -5,7 +5,6 @@
  * Theme callbacks for the scanner module.
  */
 
-
 /**
  * Theme the search results.
  */

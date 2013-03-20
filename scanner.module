@@ -3,35 +3,6 @@
 /**
  * @file
  * Search and Replace Scanner - works on all nodes text content.
- *
- * The Search and Replace Scanner can do regular expression matches
- * against a configurable list of title, body and text fields.
- * This is useful for finding html strings that Drupal's normal search will
- * ignore. It can also replace the matched text. Very handy if you are changing
- * the name of your company, or are changing the URL of a link included
- * multiple times in multiple nodes.
- *
- * Limitations:
- *  Only works with Mysql
- *
- * Warning:
- *  This is a very powerful tool, and as such is very dangerous. You can
- *  easy distroy your entire site with it. Be sure to backup your database
- *  before using it. No, really.
- *
- * Credits:
- *  Version 5.x-1.0 by:
- *   - Tao Starbow http://www.starbowconsulting.com
- *     Drupal username: starbow
- *  Version 5.x-2.0 by:
- *   - Amit Asaravala http://www.returncontrol.com
- *     Drupal username: aasarava
- *   - Jason Salter jason http://www.fivepaths.com
- *     Drupal username: jpsalter
- *   - Sponsored by Five Paths Consulting http://www.fivepaths.com
- *  Version 7.x-1.0 by:
- *   - Michael Rossetti - http://www.mit.edu
- *     Drupal username: MikeyR
  */
 
 // The special characters to escape if a search string is not a regex string.
@@ -335,32 +306,12 @@ function scanner_form($form, &$form_state) {
     '#maxlength' => 256,
   );
 
-  /* TODO: for possible future implementation...
-   * Depends on whether negative lookahead and negative lookbehind
-   *  can accurately be approximated in MySQL...
-   $form['options']['surrounding']['notpreceded'] = array(
-   '#type' => 'checkbox',
-   '#title' => t('NOT preceded by the text above'),
-   '#default_value' => $notpreceded,
-   );
-   */
-
   $form['options']['surrounding']['followed'] = array(
     '#type' => 'textfield',
     '#title' => t('Followed by'),
     '#default_value' => $followed,
     '#maxlength' => 256,
   );
-
-  /* TODO: for possible future implementation...
-   * Depends on whether negative lookahead and negative lookbehind
-   *  can accurately be approximated in MySQL...
-   $form['options']['surrounding']['notfollowed'] = array(
-   '#type' => 'checkbox',
-   '#title' => t('NOT followed by the text above'),
-   '#default_value' => $notfollowed,
-   );
-   */
 
   $form['options']['mode'] = array(
     '#type' => 'checkbox',
@@ -477,25 +428,25 @@ function scanner_form_submit($form, &$form_state) {
  * @ingroup forms
  */
 function scanner_confirm_form($form, &$form_state) {
-  //using set_html_head because it seems unecessary to load a separate css
-  // file for just one declaration:
-  //you can override the styles by declaring with something "higher up"
-  // the chain, like:  #wrapper #scanner-confirm-form .scanner-buttons .scanner-button-msg {...}
   drupal_add_css('
-      #scanner-confirm-form .scanner-buttons .scanner-button-msg {
-        position:absolute;
-        top:0; left:0; z-index:100;
-        width:100%; height:100%;
-        background-color:#000; opacity:0.75;
-        font-size:1.2em;
-      }
-      #scanner-confirm-form .scanner-buttons .scanner-button-msg p {
-        color:#fff;
-      }
-    ', array('type' => 'inline'));
+    #scanner-confirm-form .scanner-buttons .scanner-button-msg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      opacity: 0.75;
+      font-size:1.2em;
+    }
+    #scanner-confirm-form .scanner-buttons .scanner-button-msg p {
+      color: #fff;
+    }
+  ', array('type' => 'inline'));
 
-  //javascript to prevent further clicks on confirmation button after it's clicked once.
-  //unfortunately we can't just use css disable to disable the button because then
+  // Javascript to prevent further clicks on confirmation button after it's clicked once.
+  // Unfortunately we can't just use css disable to disable the button because then
   // the op values aren't sent to drupal correctly.
   drupal_add_js("
     jQuery(document).ready(function() {
@@ -1068,7 +1019,6 @@ function scanner_execute($searchtype = 'search') {
   }
   else { // searchtype == 'replace'
     if (count($undo_data) && !$shutting_down) {
-      // TODO Please review the conversion of this statement to the D7 database API syntax.
       $id = db_insert('scanner')
             ->fields(array(
                 'undo_data' => serialize($undo_data),
