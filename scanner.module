@@ -781,36 +781,23 @@ function scanner_execute($searchtype = 'search') {
   $undo_data = variable_get('scanner_partial_undo_' . $user->uid, array());
 
   unset($_SESSION['scanner_status']);
-  $results = NULL;
   $search      = $_SESSION['scanner_search'];
   $replace     = $_SESSION['scanner_replace'];
   $preceded    = $_SESSION['scanner_preceded'];
-  //$notpreceded = $_SESSION['scanner_notpreceded'];
   $followed    = $_SESSION['scanner_followed'];
-  //$notfollowed = $_SESSION['scanner_notfollowed'];
   $mode        = $_SESSION['scanner_mode'];
+  $flag        = $mode ? NULL : 'i'; // Case sensitivity flag for use in php preg_search and preg_replace
   $wholeword   = $_SESSION['scanner_wholeword'];
   $published   = $_SESSION['scanner_published'];
   $regex       = $_SESSION['scanner_regex'];
-  if (isset($_SESSION['scanner_terms'])) {
-    $terms = $_SESSION['scanner_terms'];
-  }
-  else {
-    $terms = NULL;
-  }
+  $terms       = isset($_SESSION['scanner_terms']) ? $_SESSION['scanner_terms'] : NULL;
+  $results     = NULL;
 
   if ($searchtype == 'search') {
     drupal_set_message(t('Searching for: [%search] ...', array('%search' => $search)));
   }
   else { //searchtype == 'replace'
     drupal_set_message(t('Replacing [%search] with [%replace] ...', array('%search' => $search, '%replace' => $replace)));
-  }
-
-  if ($mode) { // Case Sensitive
-    $flag = NULL;
-  }
-  else { // Case Insensitive
-    $flag = 'i'; //ci flag for use in php preg_search and preg_replace
   }
 
   $preceded_php = '';
@@ -862,15 +849,14 @@ function scanner_execute($searchtype = 'search') {
     $where .= ' AND (' . implode(' OR ', $terms_where) . ')';
   }
 
-  $tables_map = _scanner_get_selected_tables_map();
-
-  foreach ($tables_map as $map) {
+  // Examine each field instance as chosen in settings.
+  foreach (_scanner_get_selected_tables_map() as $map) {
     $table = $map['table'];
     $field = $map['field'];
     $field_summary = NULL;
     $type = $map['type'];
     $field_collection = isset($map['field_collection']) ? $map['field_collection'] : NULL;
-    $field_collection_table = isset($map['field_collection']) ? $map['field_collection_table'] : NULL;
+    $field_collection_table = isset($map['field_collection_table']) ? $map['field_collection_table'] : NULL;
 
     $query = db_select($table, 't');
     if ($table == 'node_revision') {
@@ -921,6 +907,7 @@ function scanner_execute($searchtype = 'search') {
 
     $shutting_down = FALSE;
 
+    // Perform the search or replace on each hit for the current field instance.
     foreach ($result as $row) {
       $content = $row->content;
       $summary = isset($row->summary) ? $row->summary : '';
