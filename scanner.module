@@ -707,6 +707,10 @@ function scanner_execute($searchtype = 'search') {
   $processed = variable_get('scanner_partially_processed_' . $user->uid, array());
   $undo_data = variable_get('scanner_partial_undo_' . $user->uid, array());
 
+  // Get the field collection field to use when joining revisions, based on whether the current
+  // version of the field_collection module has revisioins enabled (7.x-1.0-beta5)
+  $fc_revision_field = drupal_get_schema('field_collection_item_revision') ? 'revision_id' : 'value';
+
   unset($_SESSION['scanner_status']);
   $search      = $_SESSION['scanner_search'];
   $replace     = $_SESSION['scanner_replace'];
@@ -777,14 +781,17 @@ function scanner_execute($searchtype = 'search') {
     $where .= ' AND (' . implode(' OR ', $terms_where) . ')';
   }
 
+  $table_map = _scanner_get_selected_tables_map();
+  usort($table_map, '_scanner_compare_fields_by_name');
+
   // Examine each field instance as chosen in settings.
-  foreach (_scanner_get_selected_tables_map() as $map) {
+  foreach ($table_map as $map) {
     $table = $map['table'];
     $field = $map['field'];
+    $field_label = $map['field_label'];
     $field_summary = NULL;
     $type = $map['type'];
-    $field_collection = isset($map['field_collection']) ? $map['field_collection'] : NULL;
-    $field_collection_table = isset($map['field_collection_table']) ? $map['field_collection_table'] : NULL;
+    $field_collection_parents = isset($map['field_collection_parents']) ? $map['field_collection_parents'] : NULL;
 
     $query = db_select($table, 't');
     if ($table == 'node_revision') {
@@ -795,11 +802,26 @@ function scanner_execute($searchtype = 'search') {
         $field_summary = $field . '_summary';
       }
       $field = $field . '_value';
+      $field_label = $field_label . '_value';
       $vid = 'revision_id';
     }
-    if (isset($field_collection_table)) {
-      $query->join($field_collection_table, 'fc', 't.entity_id = fc.' . $field_collection . '_value AND t.revision_id = fc.' . $field_collection . '_value');
-      $query->join('node', 'n', 'fc.entity_id = n.nid AND fc.revision_id = n.vid');
+    if (!empty($field_collection_parents)) {
+      $cnt_fc = count($field_collection_parents);
+
+      // Loop thru the parents backwards, so that the joins can all be created.
+      for ($i = $cnt_fc; $i > 0; $i--) {
+        $fc_this = $field_collection_parents[$i - 1];
+        $fc_alias = 'fc' . ($i - 1);
+        $fc_table = 'field_revision_' . $fc_this;
+        $prev_alias = ($i == $cnt_fc) ? 't' : ('fc' . $i);
+        $query->join($fc_table, $fc_alias,
+            format_string('!PREV_ALIAS.entity_id = !FC_ALIAS.!FC_THIS_value AND !PREV_ALIAS.revision_id = !FC_ALIAS.!FC_THIS_!FC_REV',
+                array('!FC_ALIAS' => $fc_alias, '!FC_THIS' => $fc_this, '!PREV_ALIAS' => $prev_alias, '!FC_REV' => $fc_revision_field)));
+        if ($i == 1) {
+          $query->join('node', 'n',
+              format_string('!FC_ALIAS.entity_id = n.nid AND !FC_ALIAS.revision_id = n.vid', array('!FC_ALIAS' => $fc_alias)));
+        }
+      }
     }
     else {
       // Must use vid and revision_id here. Make sure it saves as new revision.
@@ -934,12 +956,19 @@ function scanner_execute($searchtype = 'search') {
           'type' => $type,
           'count' => $hits,
           'field' => $field,
+          'field_label' => $field_label,
           'nid' => $row->nid,
           'text' => $text,
         );
       }
       // Replace (and check to see if already processed).
       elseif (!isset($processed[$field][$row->nid])) {
+        if (!empty($field_collection_parents)) {
+          drupal_set_message(
+            t('[%search] not replaced in @field of node @nid - replacement not yet implemented for fields within field collections.',
+              array('%search' => $search, '@field' => $field_label, '@nid' => $node->nid)), 'warning');
+          continue;
+        }
         // Check first if pathauto_persist, a newer version of pathauto, or some
         // other module has already set $node->path['pathauto']. If not, set it
         // to false (to prevent pathauto from touching the node during node_save())
@@ -993,6 +1022,7 @@ function scanner_execute($searchtype = 'search') {
           'type' => $node->type,
           'count' => $hits,
           'field' => $field,
+          'field_label' => $field_label,
           'nid' => $node->nid,
         );
       }
@@ -1095,7 +1125,7 @@ function scanner_admin_form($node, &$form_state) {
   );
 
   $table_map = _scanner_get_all_tables_map();
-  sort($table_map);
+  usort($table_map, '_scanner_compare_fields_by_name');
   foreach ($table_map as $item) {
     $key = 'scanner_' . $item['field'] . '_' . $item['table'] . '_' . $item['type'];
     $form['tables'][$key] = array(
@@ -1111,25 +1141,138 @@ function scanner_admin_form($node, &$form_state) {
 // ***************************************************************************
 // Internal Utility Functions ************************************************
 // ***************************************************************************
+/**
+ * Add all text fields that are buried in field collections.
+ *
+ * This function will search recursively down any level of field collection
+ * nesting to find all text fields.  Note that if a field collection is nested
+ * within itself, this function will not traverse the field collection a second
+ * time (which would otherwise result in infinite recusion).
+ *
+ * @param array $all_field_records
+ *   Array of field records curerntly being built.
+ * @param string $node_bundle
+ *   The name of the node type being searched. Initially passed in as NULL b/c
+ *   the first time this function runs it finds all "top level" field
+ *   collections, which can be across multiple node types.  For each field
+ *   collection instance found, however, if there are field collections inside
+ *   of it we call this function recursively to find more fields.  On that
+ *   recursive call, we pass in the node type where the top level field
+ *   collection was found so that we have the appropriate node type to add to
+ *   the text field records added to $all_field_records.
+ * @param string $parent_bundle
+ *   The bundle in which we are currently searching for field collections.
+ *   Initially passed in as NULL b/c the first time this function runs it finds
+ *   all "top level" field collections, which can be across multiple node types
+ *   (a.k.a. bundles).  For each field collection instance found, however, if
+ *   there are field collections inside of it we call this function recursively
+ *   to find more fields.  On that recursive call, we pass in the bundle of the
+ *   current field collection being searched so that the query in the recursive
+ *   call can search for fields within that bundle.
+ * @param array $parents
+ *   An array tracking all field collection parents for text fields we
+ *   eventually find.  Initially passed in as NULL b/c the first time this
+ *   function runs it finds all "top level" field collections, which must each
+ *   have its own instance of the $parents array.  The $parents array serves
+ *   two purposes.  First, it is used to set the "field_collection_parents"
+ *   value for all text fields found.  Second, it is used to prevent infinite
+ *   recursion in the case where a field collection is nested within itself.
+ */
+function _scanner_add_field_collection_fields(&$all_field_records, $node_bundle = NULL, $parent_bundle = NULL, $parents = NULL) {
+  $query = db_select('field_config_instance', 'instance_parent');
+  $query->join('field_config', 'config_parent', 'instance_parent.field_name = config_parent.field_name');
+  $query->join('field_config_instance', 'instance_child', 'instance_child.bundle = config_parent.field_name');
+  $query->join('field_config', 'config_child', 'instance_child.field_name = config_child.field_name');
+  $query->fields('config_child', array('field_name', 'module'));
+  $query->fields('instance_parent', array('bundle'));
+  $query->addField('config_parent', 'field_name', 'field_collection_name');
+  if ($parent_bundle) {
+    $query->condition('config_parent.field_name', $parent_bundle);
+    $query->condition('instance_parent.entity_type', 'field_collection_item');
+  }
+  else {
+    $query->condition('instance_parent.entity_type', 'node');
+  }
+  $query->condition('instance_child.entity_type', 'field_collection_item');
+  $query->condition('config_child.module', array('text', 'field_collection'), 'IN');
+
+  $result = $query->execute();
+
+  foreach ($result as $record) {
+    $field_parents = isset($parents) ? $parents : array($record->field_collection_name);
+    $record->node_bundle = isset($node_bundle) ? $node_bundle : $record->bundle;
+    if ($record->module == 'text') {
+      $record->field_collection_parents = $field_parents;
+      $all_field_records[] = $record;
+    }
+    elseif ($record->module == 'field_collection') {
+      // This if statement prevents infinite recursion if a field collection is nested within itself.
+      if (!in_array($record->field_name, $field_parents)) {
+        $field_parents[] = $record->field_name;
+        _scanner_add_field_collection_fields($all_field_records, $record->node_bundle, $record->field_name, $field_parents);
+      }
+    }
+  }
+}
+
+/**
+ * Comparison function for sorting fields by table/field label.
+ *
+ * @param array $left
+ *   One field.
+ * @param array $right
+ *   The other field.
+ *
+ * @return number
+ *   Comparison value determining which order these two fields should be sorted
+ *   in relation to each other based on field label.
+ */
+function _scanner_compare_fields_by_label($left, $right) {
+  $cmp = strcmp($left['type'], $right['type']);
+  if ($cmp != 0) {
+    return $cmp;
+  }
+
+  return strcmp($left['field_label'], $right['field_label']);
+}
+
+/**
+ * Comparison function for sorting fields by table/field name.
+ *
+ * @param array $left
+ *   One field.
+ * @param array $right
+ *   The other field.
+ *
+ * @return number
+ *   Comparison value determining which order these two fields should be sorted
+ *   in relation to each other based on field name.
+ */
+function _scanner_compare_fields_by_name($left, $right) {
+  $cmp = strcmp($left['type'], $right['type']);
+  if ($cmp != 0) {
+    return $cmp;
+  }
+
+  return strcmp($left['field'], $right['field']);
+}
 
 /**
  * Get all text fields.
  *
- * @return map of fields and tables.
+ * @return array
+ *   List of all fields, each of which is an array containing relevant data
+ *   used for diplaying/querying.
  */
 function _scanner_get_all_tables_map() {
-  // Each array in the multidim array that is returned should be in the
-  // following order: type, field, table.
-  // This ensures that we can use the sort() function to easily sort the array
-  // based on the nodetype.
-
-  // Build list of title, body, teaser fields for all node types.
+  // Build list of title fields for all node types.
   $ntypes = node_type_get_types();
   foreach ($ntypes as $type) {
     if ($type->has_title) {
       $tables_map[] = array(
         'type' => $type->type,
         'field' => 'title',
+        'field_label' => 'title',
         'table' => 'node_revision',
       );
     }
@@ -1140,10 +1283,10 @@ function _scanner_get_all_tables_map() {
   if (module_exists('field')) {
     $query = db_select('field_config_instance', 'fci');
     $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
-    $query->fields('fci', array('field_name', 'bundle'));
+    $query->fields('fci', array('field_name'));
+    $query->addField('fci', 'bundle', 'node_bundle');
     $query->condition('fci.entity_type', 'node');
     $query->condition('fc.module', 'text', '=');
-    $query->orderBy('bundle', 'ASC');
 
     $result = $query->execute();
 
@@ -1153,33 +1296,16 @@ function _scanner_get_all_tables_map() {
   }
 
   if (module_exists('field_collection')) {
-    // TODO Handle nested field_collections - i.e. field_collections inside field_collections
-    $query = db_select('field_config_instance', 'fci_fc');
-    $query->join('field_config', 'fc_fc', 'fci_fc.field_name = fc_fc.field_name');
-    $query->join('field_config_instance', 'fci_field', 'fci_field.bundle = fc_fc.field_name');
-    $query->join('field_config', 'fc_field', 'fci_field.field_name = fc_field.field_name');
-    $query->fields('fci_field', array('field_name'));
-    $query->fields('fci_fc', array('bundle'));
-    $query->addField('fc_fc', 'field_name', 'field_collection_name');
-    $query->condition('fci_field.entity_type', 'field_collection_item');
-    $query->condition('fci_fc.entity_type', 'node');
-    $query->condition('fc_field.module', 'text', '=');
-    $query->orderBy('bundle', 'ASC');
-
-    $result = $query->execute();
-
-    foreach ($result as $record) {
-      $all_field_records[] = $record;
-    }
+    _scanner_add_field_collection_fields($all_field_records);
   }
 
   foreach ($all_field_records as $record) {
     $tables_map[] = array(
-      'type' => $record->bundle,
+      'type' => $record->node_bundle,
       'field' => $record->field_name,
+      'field_label' => (empty($record->field_collection_parents) ? '' : join('->', $record->field_collection_parents) . '->') . $record->field_name,
       'table' => 'field_revision_' . $record->field_name,
-      'field_collection' => isset($record->field_collection_name) ? $record->field_collection_name : NULL,
-      'field_collection_table' => isset($record->field_collection_name) ? 'field_revision_' . $record->field_collection_name : NULL
+      'field_collection_parents' => isset($record->field_collection_parents) ? $record->field_collection_parents : NULL,
     );
   }
 

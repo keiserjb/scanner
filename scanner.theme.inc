@@ -39,7 +39,7 @@ function theme_scanner_item($variables) {
   $item['count'] = $item['count'] > 0 ? $item['count'] : 'One or more';
   $output .= '<li class="scanner-result">';
   $output .=   '<span class="scanner-title">' . l($item['title'], 'node/' . $item['nid']) . '</span><br />';
-  $output .=   '<span class="scanner-info">[' . $item['count'] . ' matches in ' . $item['type'] . ' ' . $item['field'] . ' field:]</span><br />';
+  $output .=   '<span class="scanner-info">[' . $item['count'] . ' matches in ' . $item['type'] . ' ' . $item['field_label'] . ' field:]</span><br />';
   $output .=   '<span class="scanner-text">' . $item['text'] . '</span>';
   $output .= '</li>';
 
@@ -78,7 +78,7 @@ function theme_scanner_replace_item($variables) {
   $item['count'] = $item['count'] > 0 ? $item['count'] : 'One or more';
   $output .= '<li class="scanner-result">';
   $output .=   '<span class="scanner-title">' . l($item['title'], 'node/' . $item['nid']) . '</span><br />';
-  $output .=   '<span class="scanner-info">[' . $item['count'] . ' replacements in ' . $item['type'] . ' ' . $item['field'] . ' field]</span>';
+  $output .=   '<span class="scanner-info">[' . $item['count'] . ' replacements in ' . $item['type'] . ' ' . $item['field_label'] . ' field]</span>';
   $output .= '</li>';
 
   return $output;
