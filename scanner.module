@@ -250,7 +250,8 @@ function scanner_view() {
     return $output;
   }
    
-  $output .= drupal_render(drupal_get_form('scanner_form'));
+  $form = drupal_get_form('scanner_form');
+  $output .= drupal_render($form);
   
   return $output;
 }
@@ -906,7 +907,6 @@ function scanner_execute($searchtype = 'search') {
         $vid = 'vid';
     }
     else{
-        $field = $field . '_value';
         $nid = 'entity_id';
         $vid = 'revision_id';
     }
@@ -1017,7 +1017,7 @@ function scanner_execute($searchtype = 'search') {
  
         //see if we're dealing with a CCK text field and therefore need to strip the
         // "_value" off the end:
-        preg_match('/(.+)_value$/', $field, $matches);
+        preg_match('/(.+)_(value|summary)$/', $field, $matches);
         if (empty($matches[0])) { //if not CCK text field:
           $thenode->$field = $newcontent;
         }
@@ -1027,7 +1027,7 @@ function scanner_execute($searchtype = 'search') {
           //eval($tmpstr);
           
           //This is a better way
-          $thenode->{$matches[1]}[$thenode->language][0]["value"] = $newcontent;
+          $thenode->{$matches[1]}[$thenode->language][0][$matches[2]] = $newcontent;
           
         }
 
@@ -1277,6 +1277,14 @@ function _scanner_get_selected_tables_map() {
     $key = 'scanner_' . $item['field'] . '_' . $item['table'] . '_' . $item['type'];
     if (!variable_get($key, FALSE)) {
       unset($tables_map[$i]);
+    } else if ($item['table'] != 'node_revision') {
+        $tables_map[$i]['field'] = $item['field'] . '_value';
+
+        if (db_field_exists($item['table'], $item['field'] . '_summary')) {
+            $summary = $tables_map[$i];
+            $summary['field'] = $item['field'] . '_summary';
+            $tables_map[] = $summary;
+        }
     }
   }
 
