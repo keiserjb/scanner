@@ -937,6 +937,9 @@ function scanner_execute($searchtype = 'search') {
         $query->condition($db_or);
     }
     $query->addField('t', $field, 'content');
+    if ($table != 'node_revision') {
+        $query->fields('t', array('delta'));
+    }
     $query->fields('n', array('nid', 'title'));
     $query->condition('n.type', $type, '=');
     if ($mode) {
@@ -1026,7 +1029,7 @@ function scanner_execute($searchtype = 'search') {
        * REPLACE
        * + check to see if already processed
        */
-      elseif (!isset($processed[$field][$row->nid])) {
+      elseif (!isset($processed[$field][$row->nid][$row->delta])) {
         $hits = 0;
         $newcontent = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
 
@@ -1044,7 +1047,7 @@ function scanner_execute($searchtype = 'search') {
           //eval($tmpstr);
           
           $language = field_language('node', $thenode, $matches[1]);
-          $thenode->{$matches[1]}[$language][0]["value"] = $newcontent;
+          $thenode->{$matches[1]}[$language][$row->delta]["value"] = $newcontent;
         }
 
         // NOTE: a revision only created for the first change of the node.
@@ -1064,7 +1067,7 @@ function scanner_execute($searchtype = 'search') {
         node_save($thenode);
 
         // array to log completed fields in case of shutdown
-        $processed[$field][$row->nid] = TRUE;
+        $processed[$field][$row->nid][$row->delta] = TRUE;
 
         // undo data construction
         $undo_data[$thenode->nid]['new_vid'] = $thenode->vid; //now set to updated vid after node_save()
