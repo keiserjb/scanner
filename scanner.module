@@ -232,7 +232,8 @@ function scanner_view() {
       $results = t('Your search yielded no results.');
     }
     
-    $output = drupal_render(drupal_get_form('scanner_form'));
+    $form = drupal_get_form('scanner_form');
+    $output = drupal_render($form);
     $output .= $results;
 
     //clear any old search form input:
@@ -889,6 +890,7 @@ function scanner_execute($searchtype = 'search') {
   }
 
   $tables_map = _scanner_get_selected_tables_map();
+  $shutting_down = FALSE;
 
   foreach ( $tables_map as $map ) {
     $table = $map['table'];
