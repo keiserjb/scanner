@@ -793,6 +793,12 @@ function scanner_undo_confirm_form_submit($form, &$form_state) {
 function scanner_execute($searchtype = 'search') {
   global $user;
 
+  $tables_map = _scanner_get_selected_tables_map();
+  if (empty($tables_map)) {
+    drupal_set_message(t('You have not enabled search for any fields on the !settings_page.', array('!settings_page' => l('settings page', 'admin/content/scanner/settings'))), 'error');
+    return;
+  }
+
   // variables to monitor possible timeout
   $max_execution_time = ini_get('max_execution_time');
   $start_time = REQUEST_TIME;
@@ -889,7 +895,6 @@ function scanner_execute($searchtype = 'search') {
     $where .= ' AND (' . implode(' OR ', $terms_where) . ')';
   }
 
-  $tables_map = _scanner_get_selected_tables_map();
   $shutting_down = FALSE;
 
   foreach ( $tables_map as $map ) {
