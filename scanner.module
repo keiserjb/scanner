@@ -478,7 +478,7 @@ function scanner_form_submit($form, &$form_state) {
    the normal form_id_validate and form_id_submit handlers. Any additional
    buttons which need to invoke different validate or submit functionality
    should have button-specific functions. */
-  if ($form_state['values']['op'] == 'Replace') {
+  if ($form_state['values']['op'] == t('Replace')) {
     $_SESSION['scanner_status'] = SCANNER_STATUS_GO_CONFIRM;
   }
   else {
@@ -1034,9 +1034,8 @@ function scanner_execute($searchtype = 'search') {
           //$tmpstr = ('$thenode->' . $matches[1] . '[$thenode->language][0]["value"] = $newcontent;');
           //eval($tmpstr);
           
-          //This is a better way
-          $thenode->{$matches[1]}[$thenode->language][0][$matches[2]] = $newcontent;
-          
+          $language = field_language('node', $thenode, $matches[1]);
+          $thenode->{$matches[1]}[$language][0]["value"] = $newcontent;
         }
 
         // NOTE: a revision only created for the first change of the node.
