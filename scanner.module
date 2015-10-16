@@ -65,6 +65,7 @@ function scanner_menu() {
     'description' => 'Find (and replace) keywords in all your content.',
     'page callback' => 'scanner_view',
     'access arguments' => array('perform search and replace'),
+    'type' => MENU_LOCAL_TASK,
   );
   $items['admin/content/scanner/scan'] = array(
     'title' => 'Search',
