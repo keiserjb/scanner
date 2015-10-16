@@ -25,11 +25,11 @@ function scanner_menu() {
     'description' => 'Find (and replace) keywords in all your content.',
     'page callback' => 'scanner_view',
     'type' => MENU_LOCAL_TASK | MENU_NORMAL_ITEM,
-    'access arguments' => array('perform search and replace'),
+    'access arguments' => array('perform search'),
   );
   $items['admin/content/scanner/scan'] = array(
     'title' => 'Search',
-    'access arguments' => array('perform search and replace'),
+    'access arguments' => array('perform search'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
   $items['admin/content/scanner/scan/confirm'] = array(
@@ -113,6 +113,9 @@ function scanner_permission() {
     ),
     'perform search and replace' => array(
       'title' => t('Perform search and replace'),
+    ),
+    'perform search' => array(
+      'title' => t('Perform search only'),
     ),
   );
 }
@@ -281,10 +284,12 @@ function scanner_form($form, &$form_state) {
     '#default_value' => $replace,
     '#title' => t('Step 2: Replace with'),
     '#maxlength' => 256,
+    '#access' => user_access('perform search and replace') ? TRUE : FALSE,
   );
   $form['submit_replace'] = array(
     '#type' => 'submit',
     '#value' => t('Replace'),
+    '#access' => user_access('perform search and replace') ? TRUE : FALSE,
   );
 
   $form['options'] = array(
