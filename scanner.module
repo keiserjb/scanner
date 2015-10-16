@@ -176,22 +176,29 @@ function scanner_view() {
 
   //javascript checks to make sure user has entered some search text:
   drupal_add_js("
-    $(document).ready(function() {
-      $('input[@type=submit][@value=Search]').click(function() {
+    (function($) {
+      $(document).ready(function() {
         var searchfield = $('#edit-search');
-        var chars = searchfield.val().length;
-        if (chars == 0) {
-          alert('Please provide some search text and try again.');
-          searchfield.addClass('error');
-          searchfield[0].focus();
-          return FALSE;
-        } else if (chars < 3) {
-          return confirm('Searching for a keyword that has fewer than three characters could take a long time. Are you sure you want to continue?');
-        }
-        return TRUE;
+        $('input[type=submit][value=". str_replace('\'', '\\\'', t('Search')) . "]').click(function() {
+          var chars = searchfield.val().length;
+
+          if (chars == 0) {
+            alert('". str_replace('\'', '\\\'', t('Please provide some search text and try again.')) . "');
+            searchfield.addClass('error');
+            searchfield[0].focus();
+            return false;
+          } else if (chars < 3) {
+            return confirm('". str_replace('\'', '\\\'', t('Searching for a keyword that has fewer than three characters could take a long time. Are you sure you want to continue?')) . "');
+          }
+          return true;
+        });
+
+        searchfield.keyup(function() {
+          searchfield.removeClass('error');
+        });
       });
-    });
-  ", array('type' => 'inline', 'scope' => JS_DEFAULT));
+    })(jQuery);
+  ", array('type' => 'inline', 'group' => JS_DEFAULT));
   
   if (isset($_SESSION['scanner_search'])) {
     $search = $_SESSION['scanner_search'];
@@ -514,15 +521,17 @@ function scanner_confirm_form($form, &$form_state) {
   //unfortunately we can't just use css disable to disable the button because then
   // the op values aren't sent to drupal correctly.
   drupal_add_js("
-    $(document).ready(function() {
-      $('input[@type=submit][@value=Yes, Continue]').click(function() {
-        $('.scanner-buttons').css('position','relative')
-          .append('<div class=\"scanner-button-msg\"><p>Replacing items... please wait...</p></div>')
-        $('.scanner-button-msg').click(function() { return false; });
-        return true;
-      });
-    });
-  ", array('type' => 'inline', 'scope' => JS_DEFAULT));
+    (function($) {
+      $(document).ready(function() {
+        $('input[type=submit][value=". str_replace('\'', '\\\'', t('Yes, Continue')) . "]').click(function() {
+          $('.scanner-buttons').css('position','relative')
+            .append('<div class=\"scanner-button-msg\"><p>". str_replace('\'', '\\\'', t('Replacing items... please wait...')) . "</p></div>')
+          $('.scanner-button-msg').click(function() { return false; });
+           return true;
+         });
+       });
+    })(jQuery);
+  ", array('type' => 'inline', 'group' => JS_DEFAULT));
 
   $form = array();
 
