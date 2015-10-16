@@ -839,6 +839,9 @@ function scanner_execute($searchtype = 'search') {
     if (isset($field_summary)) {
       $query->addField('t', $field_summary, 'summary');
     }
+    if ($table != 'node_revision') {
+      $query->fields('t', array('delta'));
+    }
     $query->fields('n', array('nid', 'title'));
     $query->condition('n.type', $type, '=');
 
@@ -962,7 +965,7 @@ function scanner_execute($searchtype = 'search') {
         );
       }
       // Replace (and check to see if already processed).
-      elseif (!isset($processed[$field][$row->nid])) {
+      elseif (!isset($processed[$field][$row->nid][$row->delta])) {
         if (!empty($field_collection_parents)) {
           drupal_set_message(
             t('[%search] not replaced in @field of node @nid - replacement not yet implemented for fields within field collections.',
@@ -989,11 +992,11 @@ function scanner_execute($searchtype = 'search') {
         preg_match('/(.+)_value$/', $field, $matches);
         if (!empty($matches[0])) {
           // Text Field or Text Area.
-          $node->{$matches[1]}[$node->language][0]['value'] = $content_new;
+          $node->{$matches[1]}[$node->language][$row->delta]['value'] = $content_new;
           // Summary.
-          if (isset($node->{$matches[1]}[$node->language][0]['summary'])) {
-            $summary = $node->{$matches[1]}[$node->language][0]['summary'];
-            $node->{$matches[1]}[$node->language][0]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
+          if (isset($node->{$matches[1]}[$node->language][$row->delta]['summary'])) {
+            $summary = $node->{$matches[1]}[$node->language][$row->delta]['summary'];
+            $node->{$matches[1]}[$node->language][$row->delta]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
             $hits += $hits_summary;
           }
         }
@@ -1013,7 +1016,7 @@ function scanner_execute($searchtype = 'search') {
         node_save($node);
 
         // Array to log completed fields in case of shutdown.
-        $processed[$field][$row->nid] = TRUE;
+        $processed[$field][$row->nid][$row->delta] = TRUE;
 
         // Undo data construction.
         $undo_data[$node->nid]['new_vid'] = $node->vid; // Now set to updated vid after node_save().
