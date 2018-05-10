@@ -796,6 +796,7 @@ function scanner_execute($searchtype = 'search') {
     $field_label = $map['field_label'];
     $field_summary = NULL;
     $type = $map['type'];
+    $module = isset($map['module'])? $map['module'] : NULL;
     $field_collection_parents = isset($map['field_collection_parents']) ? $map['field_collection_parents'] : NULL;
 
     $query = db_select($table, 't');
@@ -806,8 +807,17 @@ function scanner_execute($searchtype = 'search') {
       if (db_field_exists($table, $field . '_summary')) {
         $field_summary = $field . '_summary';
       }
-      $field = $field . '_value';
-      $field_label = $field_label . '_value';
+
+      switch ($module) {
+        case 'link':
+          $suffix = 'url';
+          break;
+        default:
+          $suffix = 'value';
+      }
+
+      $field = $field . '_' . $suffix;
+      $field_label = $field_label . '_' . $suffix;
       $vid = 'revision_id';
     }
     if (!empty($field_collection_parents)) {
@@ -994,10 +1004,10 @@ function scanner_execute($searchtype = 'search') {
 
         $hits = 0;
         $content_new = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
-        preg_match('/(.+)_value$/', $field, $matches);
+        preg_match('/(.+)_' . $suffix . '$/', $field, $matches);
         if (!empty($matches[0])) {
           // Text Field or Text Area.
-          $node->{$matches[1]}[$node->language][$row->delta]['value'] = $content_new;
+          $node->{$matches[1]}[$node->language][$row->delta][$suffix] = $content_new;
           // Summary.
           if (isset($node->{$matches[1]}[$node->language][$row->delta]['summary'])) {
             $summary = $node->{$matches[1]}[$node->language][$row->delta]['summary'];
@@ -1286,20 +1296,30 @@ function _scanner_get_all_tables_map() {
     }
   }
 
-  $all_field_records = array();
+  $all_field_records = $fields_type = array();
 
   if (module_exists('field')) {
-    $query = db_select('field_config_instance', 'fci');
-    $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
-    $query->fields('fci', array('field_name'));
-    $query->addField('fci', 'bundle', 'node_bundle');
-    $query->condition('fci.entity_type', 'node');
-    $query->condition('fc.module', 'text', '=');
+    $fields_type[] = 'text';
+  }
+  if (module_exists('link')) {
+    $fields_type[] = 'link';
+  }
 
-    $result = $query->execute();
+  if (!empty($fields_type)) {
+    foreach ($fields_type as $fieldType) {
+      $query = db_select('field_config_instance', 'fci');
+      $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
+      $query->fields('fci', array('field_name'));
+      $query->fields('fc', array('module'));
+      $query->addField('fci', 'bundle', 'node_bundle');
+      $query->condition('fci.entity_type', 'node');
+      $query->condition('fc.module', $fieldType, '=');
 
-    foreach ($result as $record) {
-      $all_field_records[] = $record;
+      $result = $query->execute();
+
+      foreach ($result as $record) {
+        $all_field_records[] = $record;
+      }
     }
   }
 
@@ -1314,6 +1334,7 @@ function _scanner_get_all_tables_map() {
       'field_label' => (empty($record->field_collection_parents) ? '' : join('->', $record->field_collection_parents) . '->') . $record->field_name,
       'table' => 'field_revision_' . $record->field_name,
       'field_collection_parents' => isset($record->field_collection_parents) ? $record->field_collection_parents : NULL,
+      'module' => $record->module,
     );
   }
 
