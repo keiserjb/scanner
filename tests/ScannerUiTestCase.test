@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Some tests for the Search and Replace Scanner module.
+ */
+
+/**
+ * Test the UI for the Scanner module.
+ */
+class ScannerUiTestCase extends DrupalWebTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Scanner UI',
+      'description' => 'Confirm that the Scanner module admin UI works.',
+      'group' => 'scanner',
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(array $modules = array()) {
+    // Enable this custom module.
+    $modules[] = 'scanner';
+    parent::setUp($modules);
+  }
+
+  /**
+   * Make sure the site still works. For now just check the front page.
+   */
+  public function testTheSiteStillWorks() {
+    // Load the front page.
+    $this->drupalGet('<front>');
+
+    // Confirm that the site didn't throw a server error or something else.
+    $this->assertResponse(200);
+
+    // Confirm that the front page contains the standard text.
+    $this->assertText(t('Welcome to Drupal'));
+  }
+
+}

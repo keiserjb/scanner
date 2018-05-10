@@ -3,3 +3,6 @@ description = Perform search and replace on chosen text fields.
 
 core = 7.x
 configure = admin/config/content/scanner
+
+; Tests.
+files[] = tests/ScannerUiTestCase.test

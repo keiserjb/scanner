@@ -5,6 +5,7 @@ Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
   field.
 #2616640 by Eric_A, DamienMcKenna, _vid, gtoffoli, petschep, Suraj_Vantagode,
   Bool Boost, hass, urix, danheisel, xaa: Field language broken.
+#2971524 by DamienMcKenna: Write a first test.
 
 
 Search and Replace Scanner 7.x-1.0-beta1, 2015-10-16
