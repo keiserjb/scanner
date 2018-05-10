@@ -1006,17 +1006,20 @@ function scanner_execute($searchtype = 'search') {
         $content_new = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
         preg_match('/(.+)_' . $suffix . '$/', $field, $matches);
         if (!empty($matches[0])) {
+          $language = field_language('node', $node, $matches[1]);
+
           // Text Field or Text Area.
-          $node->{$matches[1]}[$node->language][$row->delta][$suffix] = $content_new;
+          $node->{$matches[1]}[$language][$row->delta][$suffix] = $content_new;
+
           // Summary.
-          if (isset($node->{$matches[1]}[$node->language][$row->delta]['summary'])) {
-            $summary = $node->{$matches[1]}[$node->language][$row->delta]['summary'];
-            $node->{$matches[1]}[$node->language][$row->delta]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
+          if (isset($node->{$matches[1]}[$language][$row->delta]['summary'])) {
+            $summary = $node->{$matches[1]}[$language][$row->delta]['summary'];
+            $node->{$matches[1]}[$language][$row->delta]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
             $hits += $hits_summary;
           }
         }
         else {
-           // Other type such as a Title.
+          // Other type such as a Title.
           $node->$field = $content_new;
         }
 

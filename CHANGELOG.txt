@@ -3,6 +3,8 @@ Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
 #2971838 by DamienMcKenna: Add a CHANGELOG.txt file.
 #1193366 by DamienMcKenna, Nitesh Pawar, 44sunsets, Shreya Shetty: Support Link
   field.
+#2616640 by Eric_A, DamienMcKenna, _vid, gtoffoli, petschep, Suraj_Vantagode,
+  Bool Boost, hass, urix, danheisel, xaa: Field language broken.
 
 
 Search and Replace Scanner 7.x-1.0-beta1, 2015-10-16
