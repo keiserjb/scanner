@@ -7,6 +7,7 @@ Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
   Bool Boost, hass, urix, danheisel, xaa: Field language broken.
 #2971524 by DamienMcKenna: Write a first test.
 #2971844 by DamienMcKenna: Add test dependencies.
+#2971844 by DamienMcKenna: Write test coverage for the search functionality.
 
 
 Search and Replace Scanner 7.x-1.0-beta1, 2015-10-16

@@ -8,7 +8,7 @@
 /**
  * Test the UI for the Scanner module.
  */
-class ScannerUiTestCase extends DrupalWebTestCase {
+class ScannerUiTestCase extends ScannerBaseTestCase {
 
   /**
    * {@inheritdoc}
@@ -19,15 +19,6 @@ class ScannerUiTestCase extends DrupalWebTestCase {
       'description' => 'Confirm that the Scanner module admin UI works.',
       'group' => 'scanner',
     );
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setUp(array $modules = array()) {
-    // Enable this custom module.
-    $modules[] = 'scanner';
-    parent::setUp($modules);
   }
 
   /**

@@ -1,0 +1,69 @@
+<?php
+
+/**
+ * @file
+ * Test basic search & replace functionality.
+ */
+
+/**
+ * Test basic search & replace functionality.
+ */
+class ScannerBasicsTestCase extends ScannerBaseTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Scanner basics',
+      'description' => 'Test the basic search & replace functionality.',
+      'group' => 'scanner',
+      'dependencies' => array(
+        'devel',
+      ),
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(array $modules = array()) {
+    parent::setUp($modules);
+
+    // Log in as user 1, to avoid permissions problems.
+    $this->loginUser1();
+
+    // Generate some sample content.
+    $this->generateSampleContent();
+  }
+
+  /**
+   * Make sure the basic search functionality works.
+   */
+  public function testSearch() {
+    // Get an idea for what content is available.
+    $this->drupalGet('admin/content');
+    $this->assertResponse(200);
+
+    // Confirm what fields will be searchable.
+    $this->drupalGet('admin/content/scanner/settings');
+    $this->assertResponse(200);
+    $this->drupalPost(NULL, array(), t('Save configuration'));
+
+    // Load the search form.
+    $this->drupalGet('admin/content/scanner');
+    $this->assertResponse(200);
+
+    // Search for a word.
+    $values = array(
+      'search' => $this->word,
+    );
+    $this->drupalPost(NULL, $values, t('Search'));
+    $this->assertResponse(200);
+
+    // Make sure the 'no results' message wasn't found.
+    $this->assertNoText('Your search yielded no results.');
+    $this->assertText('Search Results');
+  }
+
+}

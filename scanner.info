@@ -7,13 +7,13 @@ configure = admin/config/content/scanner
 ; Tests.
 ; Some helper logic.
 test_dependencies[] = devel
-;files[] = tests/ScannerBaseTestCase.test
+files[] = tests/ScannerBaseTestCase.test
 
 ; Basic admin UI functionality.
 files[] = tests/ScannerUiTestCase.test
 
 ; Basic search & replace functionality.
-;files[] = tests/ScannerBasicsTestCase.test
+files[] = tests/ScannerBasicsTestCase.test
 
 ; Field Collection integration.
 test_dependencies[] = field_collection
