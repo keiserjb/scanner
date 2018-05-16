@@ -16,13 +16,16 @@ abstract class ScannerBaseTestCase extends DrupalWebTestCase {
   public function setUp(array $modules = array()) {
     // Enable this custom module.
     $modules[] = 'scanner';
+
     // Used to generate some test content.
+    $modules[] = 'devel';
     $modules[] = 'devel_generate';
+
+    // Build the site.
     parent::setUp($modules);
 
-    // Replace the placeholder word.
-    module_load_include('inc', 'devel_generate');
-    $this->word = devel_create_greeking(1, TRUE);
+    // Bump up error reporting.
+    variable_set('error_level', 2);
   }
 
   /**
@@ -31,7 +34,14 @@ abstract class ScannerBaseTestCase extends DrupalWebTestCase {
    *
    * @var string
    */
-  protected $word = 'mango';
+  protected $word = 'banana';
+
+  /**
+   * This word will replace the other word.
+   *
+   * @var string
+   */
+  protected $replaceWord = 'mango';
 
   /**
    * {@inheritdoc}
@@ -96,7 +106,9 @@ abstract class ScannerBaseTestCase extends DrupalWebTestCase {
       $node->status = 1;
       $node->uid = 1;
       $node->language = LANGUAGE_NONE;
-      $node->devel_generate = array();
+      $node->devel_generate = array(
+        'word' => $this->word,
+      );
 
       // A portion of nodes will have the custom word inserted.
       if (mt_rand(0, 5) == 5) {
@@ -122,22 +134,9 @@ abstract class ScannerBaseTestCase extends DrupalWebTestCase {
         $node->body[LANGUAGE_NONE][0]['value'] = str_replace($this->word, '', $node->body[LANGUAGE_NONE][0]['value']);
       }
 
-      // Allow this instance to assign extra fields if needed.
-      $this->extraFields($node);
-
       // Save the node.
       node_save($node);
     }
   }
-
-  /**
-   * Allow this test class to assign extra values.
-   *
-   * Note: The node has not been saved yet so there will not be a nid value.
-   *
-   * @param object $node
-   *   The node to add fields to.
-   */
-  private function extraFields($node) {}
 
 }

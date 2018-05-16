@@ -1,0 +1,166 @@
+<?php
+
+/**
+ * @file
+ * Test integration with Field Collection.
+ */
+
+/**
+ * Test integration with Field Collection.
+ */
+class ScannerWithFieldCollectionTestCase extends ScannerBaseTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Scanner with Field Collection',
+      'description' => 'Examine how the module works with Field Collection.',
+      'group' => 'scanner',
+      'dependencies' => array(
+        'devel',
+        'field_collection',
+      ),
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(array $modules = array()) {
+    // Enable the FC module.
+    $modules[] = 'field_collection';
+    // Need the helper module.
+    $modules[] = 'scanner_with_fc_tests';
+    parent::setUp($modules);
+
+    // Log in as user 1, to avoid permissions problems.
+    $this->loginUser1();
+
+    // Add a FC field to the Article content type.
+    $this->drupalGet('admin/structure/types/manage/article/fields');
+    $this->assertResponse(200);
+    $edit = array(
+      'fields[_add_new_field][label]' => 'Stuff',
+      'fields[_add_new_field][field_name]' => 'stuff',
+      'fields[_add_new_field][type]' => 'field_collection',
+      'fields[_add_new_field][widget_type]' => 'field_collection_embed',
+    );
+    $this->drupalPost(NULL, $edit, t('Save'));
+    $this->assertResponse(200);
+    $edit = array();
+    $this->drupalPost(NULL, $edit, t('Save field settings'));
+    $this->assertResponse(200);
+    $edit = array(
+      'field[cardinality]' => -1,
+    );
+    $this->drupalPost(NULL, $edit, t('Save settings'));
+    $this->assertResponse(200);
+    $this->assertText('Saved Stuff configuration.');
+
+    // Add a text field to the FC type.
+    $this->drupalGet('admin/structure/field-collections/field-stuff/fields');
+    $this->assertResponse(200);
+    $edit = array(
+      'fields[_add_new_field][label]' => 'Text',
+      'fields[_add_new_field][field_name]' => 'text',
+      'fields[_add_new_field][type]' => 'text',
+      'fields[_add_new_field][widget_type]' => 'text_textfield',
+    );
+    $this->drupalPost(NULL, $edit, t('Save'));
+    $this->assertResponse(200);
+    $edit = array();
+    $this->drupalPost(NULL, $edit, t('Save field settings'));
+    $this->assertResponse(200);
+    $edit = array();
+    $this->drupalPost(NULL, $edit, t('Save settings'));
+    $this->assertResponse(200);
+    $this->assertText('Saved Text configuration.');
+
+    // Generate some sample content.
+    $this->generateSampleContent();
+  }
+
+  /**
+   * Test the search functionality.
+   */
+  public function testSearch() {
+    // Load the settings page, confirm the FC field is present.
+    $this->drupalGet('admin/content/scanner/settings');
+    $this->assertResponse(200);
+
+    // Confirm that the field from the FC field is present.
+    $this->assertText(t('article: field_text'));
+
+    $this->drupalGet('admin/content');
+    $this->assertResponse(200);
+
+    // Load the search form.
+    $this->drupalGet('admin/content/scanner');
+    $this->assertResponse(200);
+
+    // Search for a word.
+    $values = array(
+      'search' => $this->word,
+    );
+    $this->drupalPost(NULL, $values, t('Search'));
+    $this->assertResponse(200);
+
+    // Make sure the 'no results' message wasn't found.
+    $this->assertNoText('Your search yielded no results.');
+    $this->assertText('Search Results');
+
+    // There should be at least one match in the FC field structure.
+    $this->assertText('matches in article field_stuff-&gt;field_text_value field');
+
+    // Identify how many items were found.
+    $xpath = $this->xpath('//ol//a');
+    $results_count = count($xpath);
+
+    // Try replacing the text.
+    $values = array(
+      'replace' => $this->replaceWord,
+    );
+    $this->drupalPost(NULL, $values, t('Replace'));
+    $this->assertResponse(200);
+
+    // Confirm the confirmation form shows correctly.
+    $this->assertText(t('Confirm Replace'));
+    $this->assertText(t('Are you sure you want to make the following replacement?'));
+    $this->assertText(t('Search for:'));
+    $this->assertText('[' . $this->word . ']');
+    $this->assertText(t('Replace with:'));
+    $this->assertText('[' . $this->replaceWord . ']');
+    $this->assertFieldById('edit-confirm');
+    $this->assertFieldById('edit-cancel');
+    $this->drupalPost(NULL, array(), t('Yes, Continue'));
+    $this->assertResponse(200);
+    $this->assertText(strip_tags(t('Replacing [%search] with [%replace] ...', array('%search' => $this->word, '%replace' => $this->replaceWord))));
+
+    // There should be the same number of items replaced as there were items
+    // found the first time.
+    $xpath = $this->xpath('//ol//a');
+    $this->assertEqual($results_count, count($xpath));
+
+    // Search the content again, this time look for the replacement word.
+    $this->drupalGet('admin/content/scanner');
+    $this->assertResponse(200);
+    $values = array(
+      'search' => $this->replaceWord,
+    );
+    $this->drupalPost(NULL, $values, t('Search'));
+    $this->assertResponse(200);
+
+    // Make sure the 'no results' message wasn't found.
+    $this->assertNoText('Your search yielded no results.');
+    $this->assertText('Search Results');
+    $this->assertText('matches in article field_stuff-&gt;field_text_value field');
+
+    // There should be the same number of results found on this search as there
+    // were items found the first time.
+    $xpath = $this->xpath('//ol//a');
+    $this->assertEqual($results_count, count($xpath));
+  }
+
+}

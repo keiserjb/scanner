@@ -64,6 +64,24 @@ class ScannerBasicsTestCase extends ScannerBaseTestCase {
     // Make sure the 'no results' message wasn't found.
     $this->assertNoText('Your search yielded no results.');
     $this->assertText('Search Results');
+
+    // Try replacing the text.
+    $values = array(
+      'replace' => $this->replaceWord,
+    );
+    $this->drupalPost(NULL, $values, t('Replace'));
+    $this->assertResponse(200);
+
+    // Confirm the confirmation form shows correctly.
+    $this->assertText(t('Confirm Replace'));
+    $this->assertText(t('Are you sure you want to make the following replacement?'));
+    $this->assertText(t('Search for:'));
+    $this->assertText('[' . $this->word . ']');
+    $this->assertText(t('Replace with:'));
+    $this->assertText('[' . $this->replaceWord . ']');
+    $this->assertFieldById('edit-confirm');
+    $this->assertFieldById('edit-cancel');
+    $this->drupalPost(NULL, array(), t('Yes, Continue'));
   }
 
 }

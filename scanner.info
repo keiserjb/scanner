@@ -17,4 +17,4 @@ files[] = tests/ScannerBasicsTestCase.test
 
 ; Field Collection integration.
 test_dependencies[] = field_collection
-;files[] = tests/ScannerWithFieldCollectionTestCase.test
+files[] = tests/ScannerWithFieldCollectionTestCase.test

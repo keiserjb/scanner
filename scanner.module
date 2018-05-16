@@ -169,7 +169,7 @@ function scanner_view() {
     $status = NULL;
   }
 
-  if (!is_NULL($search) && $status >= SCANNER_STATUS_GO_SEARCH) {
+  if (!is_null($search) && $status >= SCANNER_STATUS_GO_SEARCH) {
     if ($status == SCANNER_STATUS_GO_CONFIRM) {
       drupal_goto('admin/content/scanner/scan/confirm');
     }
@@ -712,8 +712,9 @@ function scanner_execute($searchtype = 'search') {
   $processed = variable_get('scanner_partially_processed_' . $user->uid, array());
   $undo_data = variable_get('scanner_partial_undo_' . $user->uid, array());
 
-  // Get the field collection field to use when joining revisions, based on whether the current
-  // version of the field_collection module has revisioins enabled (7.x-1.0-beta5)
+  // Get the field collection field to use when joining revisions, based on
+  // whether the current version of the field_collection module has revisions
+  // enabled (7.x-1.0-beta5)
   $fc_revision_field = drupal_get_schema('field_collection_item_revision') ? 'revision_id' : 'value';
 
   unset($_SESSION['scanner_status']);
@@ -722,7 +723,8 @@ function scanner_execute($searchtype = 'search') {
   $preceded    = $_SESSION['scanner_preceded'];
   $followed    = $_SESSION['scanner_followed'];
   $mode        = $_SESSION['scanner_mode'];
-  $flag        = $mode ? NULL : 'i'; // Case sensitivity flag for use in php preg_search and preg_replace
+  // Case sensitivity flag for use in php preg_search and preg_replace.
+  $flag        = $mode ? NULL : 'i';
   $wholeword   = $_SESSION['scanner_wholeword'];
   $regex       = $_SESSION['scanner_regex'];
   $published   = $_SESSION['scanner_published'];
@@ -808,6 +810,7 @@ function scanner_execute($searchtype = 'search') {
         $field_summary = $field . '_summary';
       }
 
+      // Work out the field 'value' to use.
       switch ($module) {
         case 'link':
           $suffix = 'url';
@@ -872,11 +875,16 @@ function scanner_execute($searchtype = 'search') {
       $query->condition('n.status', '1', '=');
     }
     $result = $query->execute();
-
     $shutting_down = FALSE;
 
     // Perform the search or replace on each hit for the current field instance.
     foreach ($result as $row) {
+      // Results of an entity property, e.g. the node title, won't have a
+      // 'delta' attribute, so make sure there is one.
+      if (!isset($row->delta)) {
+        $row->delta = 0;
+      }
+
       $content = $row->content;
       $summary = isset($row->summary) ? $row->summary : '';
       $matches = array();
@@ -940,7 +948,8 @@ function scanner_execute($searchtype = 'search') {
 
               // Don't want substr to wrap.
               $start = $match[1]-$context_length > 0 ? $match[1]-$context_length : 0;
-              // If the match is close to the beginning of the string, need less context.
+              // If the match is close to the beginning of the string, need
+              // less context.
               $length = $match[1] >= $context_length ? $context_length : $match[1];
 
               if ($prepend = substr($string, $start, $length)) {
@@ -964,9 +973,9 @@ function scanner_execute($searchtype = 'search') {
           $text .= '</ul>';
         }
         else {
-          $text = '<div class="messages warning"><h2 class="element-invisible">Warning message</h2>' .
-                   t("Can't display search result due to conflict between search term and internal preg_match_all function.") .
-                  '</div>';
+          $text = '<div class="messages warning"><h2 class="element-invisible">Warning message</h2>'
+            . t("Can't display search result due to conflict between search term and internal preg_match_all function.")
+            . '</div>';
         }
 
         $results[] = array(
@@ -979,18 +988,14 @@ function scanner_execute($searchtype = 'search') {
           'text' => $text,
         );
       }
+
       // Replace (and check to see if already processed).
       elseif (!isset($processed[$field][$row->nid][$row->delta])) {
-        if (!empty($field_collection_parents)) {
-          drupal_set_message(
-            t('[%search] not replaced in @field of node @nid - replacement not yet implemented for fields within field collections.',
-              array('%search' => $search, '@field' => $field_label, '@nid' => $node->nid)), 'warning');
-          continue;
-        }
         // Check first if pathauto_persist, a newer version of pathauto, or some
         // other module has already set $node->path['pathauto']. If not, set it
-        // to false (to prevent pathauto from touching the node during node_save())
-        // if a custom alias exists that doesn't follow pathauto rules.
+        // to false (to prevent pathauto from touching the node during
+        // node_save()) if a custom alias exists that doesn't follow pathauto
+        // rules.
         if (!isset($node->path['pathauto']) && module_exists('pathauto') && $pathauto) {
           list($id, , $bundle) = entity_extract_ids('node', $node);
           if (!empty($id)) {
@@ -1005,47 +1010,113 @@ function scanner_execute($searchtype = 'search') {
         $hits = 0;
         $content_new = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
         preg_match('/(.+)_' . $suffix . '$/', $field, $matches);
-        if (!empty($matches[0])) {
-          $language = field_language('node', $node, $matches[1]);
 
-          // Text Field or Text Area.
-          $node->{$matches[1]}[$language][$row->delta][$suffix] = $content_new;
+        // Field collections.
+        if (!empty($field_collection_parents)) {
+          foreach ($node->{$field_collection_parents[0]} as $fc_lang => $fc_data) {
+            foreach ($fc_data as $key => $fc_item) {
+              $fc = field_collection_item_load($fc_item['value']);
+              $fc_changed = FALSE;
+              foreach ($fc->{$matches[1]}[LANGUAGE_NONE] as $fc_key => $fc_val) {
+                $fc_hits = 0;
+                $fc_content = preg_replace("/$search_php/$flag", $replace, $fc_val[$suffix], -1, $fc_hits);
+                if ($fc_content != $fc_val['value']) {
+                  $fc_changed = TRUE;
+                  $fc->{$matches[1]}[LANGUAGE_NONE][$fc_key][$suffix] = $fc_content;
+                }
 
-          // Summary.
-          if (isset($node->{$matches[1]}[$language][$row->delta]['summary'])) {
-            $summary = $node->{$matches[1]}[$language][$row->delta]['summary'];
-            $node->{$matches[1]}[$language][$row->delta]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
-            $hits += $hits_summary;
+                // Also need to handle the summary part of text+summary fields.
+                if (isset($fc_val['summary'])) {
+                  $summary_hits = 0;
+                  $fc_summary = preg_replace("/$search_php/$flag", $replace, $fc_val['summary'], -1, $summary_hits);
+                  if ($fc_summary != $fc_val['summary']) {
+                    $fc_hits += $summary_hits;
+                    $fc_changed = TRUE;
+                    $fc->{$matches[1]}[LANGUAGE_NONE][$fc_key]['summary'] = $fc_summary;
+                  }
+                }
+
+                if ($fc_hits > 0) {
+                  $results[] = array(
+                    'title' => $node->title,
+                    'type' => $node->type,
+                    'count' => $fc_hits,
+                    'field' => $field,
+                    'field_label' => $field_label,
+                    'nid' => $node->nid,
+                  );
+                }
+              }
+
+              // If field collection revision handling is enabled, update the
+              // revision ID on the field.
+              // @todo Handle scenarios were the same FC is updated multiple
+              // times on the same request.
+              if ($fc_revision_field == 'revision_id') {
+                $fc->revision = 1;
+              }
+
+              // Update the field collection.
+              $fc->save(TRUE);
+
+              // If field collection revision handling is enabled, update the
+              // revision ID on the field; the entity's revision_id is updated
+              // during the save() method, so this is safe to do.
+              if ($fc_revision_field == 'revision_id') {
+                $node->{$field_collection_parents[0]}[$fc_lang][$key]['revision_id'] = $fc->revision_id;
+              }
+            }
           }
         }
+
+        // Normal node fields.
         else {
-          // Other type such as a Title.
-          $node->$field = $content_new;
+          if (!empty($matches[0])) {
+            $language = field_language('node', $node, $matches[1]);
+
+            // Text Field or Text Area.
+            $node->{$matches[1]}[$language][$row->delta][$suffix] = $content_new;
+
+            // Summary.
+            if (isset($node->{$matches[1]}[$language][$row->delta]['summary'])) {
+              $summary = $node->{$matches[1]}[$language][$row->delta]['summary'];
+              $node->{$matches[1]}[$language][$row->delta]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
+              $hits += $hits_summary;
+            }
+          }
+          else {
+            // Other type such as a Title.
+            $node->$field = $content_new;
+          }
+
+          // Update the counter.
+          $results[] = array(
+            'title' => $node->title,
+            'type' => $node->type,
+            'count' => $hits,
+            'field' => $field,
+            'field_label' => $field_label,
+            'nid' => $node->nid,
+          );
         }
 
         // A revision only created for the first change of the node.
-        // Subsequent changes of the same node do not generate additional revisions.
+        // Subsequent changes of the same node do not generate additional
+        // revisions.
+        // @todo Need a better way of handling this.
         if (!isset($undo_data[$node->nid]['new_vid'])) {
           $node->revision = TRUE;
           $node->log = t('@name replaced %search with %replace via Scanner Search and Replace module.', array('@name' => $user->name, '%search' => $search, '%replace' => $replace));
           $undo_data[$node->nid]['old_vid'] = $node->vid;
         }
-
         node_save($node);
 
         // Array to log completed fields in case of shutdown.
         $processed[$field][$row->nid][$row->delta] = TRUE;
 
         // Undo data construction.
-        $undo_data[$node->nid]['new_vid'] = $node->vid; // Now set to updated vid after node_save().
-        $results[] = array(
-          'title' => $node->title,
-          'type' => $node->type,
-          'count' => $hits,
-          'field' => $field,
-          'field_label' => $field_label,
-          'nid' => $node->nid,
-        );
+        // Now set to updated vid after node_save().
+        $undo_data[$node->nid]['new_vid'] = $node->vid;
       }
     } // end foreach
   } // end foreach
@@ -1061,16 +1132,16 @@ function scanner_execute($searchtype = 'search') {
   }
   else { // searchtype == 'replace'
     if (count($undo_data) && !$shutting_down) {
-      $id = db_insert('scanner')
-            ->fields(array(
-                'undo_data' => serialize($undo_data),
-                'undone' => 0,
-                'searched' => $search,
-                'replaced' => $replace,
-                'count' => count($undo_data),
-                'time' => REQUEST_TIME,
-              ))
-            ->execute();
+      db_insert('scanner')
+        ->fields(array(
+          'undo_data' => serialize($undo_data),
+          'undone' => 0,
+          'searched' => $search,
+          'replaced' => $replace,
+          'count' => count($undo_data),
+          'time' => REQUEST_TIME,
+        ))
+        ->execute();
     }
 
     return theme('scanner_replace_results', array('results' => $results));
