@@ -882,9 +882,9 @@ function scanner_execute($searchtype = 'search') {
       $matches = array();
       $text = '';
 
-      // Checking for possible timeout.
-      // If within 5 seconds of timeout, attempt to expand environment.
-      if (REQUEST_TIME >= ($start_time + $max_execution_time - 5)) {
+      // If the max_execution_time setting has been set then check for possible
+      // timeout. If within 5 seconds of timeout, attempt to expand environment.
+      if ($max_execution_time > 0 && REQUEST_TIME >= ($start_time + $max_execution_time - 5)) {
         if (!$expanded) {
           if ($user->uid > 0) {
             $verbose = TRUE;
