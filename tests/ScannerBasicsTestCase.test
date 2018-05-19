@@ -46,7 +46,7 @@ class ScannerBasicsTestCase extends ScannerBaseTestCase {
     $this->assertResponse(200);
 
     // Confirm what fields will be searchable.
-    $this->drupalGet('admin/content/scanner/settings');
+    $this->drupalGet('admin/config/content/scanner');
     $this->assertResponse(200);
     $this->drupalPost(NULL, array(), t('Save configuration'));
 

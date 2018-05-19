@@ -25,14 +25,31 @@ class ScannerUiTestCase extends ScannerBaseTestCase {
    * Make sure the site still works. For now just check the front page.
    */
   public function testTheSiteStillWorks() {
-    // Load the front page.
-    $this->drupalGet('<front>');
+    // Log in as user 1, we don't care about permissions for this.
+    $this->loginUser1();
 
-    // Confirm that the site didn't throw a server error or something else.
+    // Load the settings form.
+    $this->drupalGet('admin/config/content/scanner');
     $this->assertResponse(200);
 
-    // Confirm that the front page contains the standard text.
-    $this->assertText(t('Welcome to Drupal'));
+    // Run through the form options that should be visible.
+    $this->assertText(t('Default options'));
+    $this->assertFieldByName('scanner_mode');
+    $this->assertFieldByName('scanner_wholeword');
+    $this->assertFieldByName('scanner_regex');
+    $this->assertFieldByName('scanner_published');
+    $this->assertFieldByName('scanner_pathauto');
+
+    // The taxonomy handling.
+    $this->assertText('Allow restrictions by terms in a vocabulary');
+    $this->assertFieldByName('scanner_vocabulary[1]');
+
+    // Field handling.
+    $this->assertText('Fields that will be searched');
+    $this->assertFieldByName('scanner_body_field_revision_body_article');
+    $this->assertFieldByName('scanner_title_node_revision_article');
+    $this->assertFieldByName('scanner_body_field_revision_body_page');
+    $this->assertFieldByName('scanner_title_node_revision_page');
   }
 
 }

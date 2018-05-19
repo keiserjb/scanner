@@ -39,6 +39,12 @@ function scanner_menu() {
     'page arguments' => array('scanner_confirm_form'),
     'type' => MENU_CALLBACK,
   );
+  $items['admin/content/scanner/undo'] = array(
+    'title' => 'Undo',
+    'page callback' => 'scanner_undo_page',
+    'access arguments' => array('perform search and replace'),
+    'type' => MENU_LOCAL_TASK,
+  );
   $items['admin/content/scanner/undo/confirm'] = array(
     'title' => 'Confirm Undo',
     'access arguments' => array('perform search and replace'),
@@ -46,29 +52,13 @@ function scanner_menu() {
     'page arguments' => array('scanner_undo_confirm_form'),
     'type' => MENU_CALLBACK,
   );
-  // Shows up on scanner page as tab.
-  $items['admin/content/scanner/settings'] = array(
-    'title' => 'Settings',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('scanner_admin_form'),
-    'access arguments' => array('administer scanner settings'),
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 1,
-  );
-  // Shows up on scanner page as tab.
-  $items['admin/content/scanner/undo'] = array(
-    'title' => 'Undo',
-    'page callback' => 'scanner_undo_page',
-    'access arguments' => array('perform search and replace'),
-    'type' => MENU_LOCAL_TASK,
-  );
-  // Shows up on admin page.
   $items['admin/config/content/scanner'] = array(
     'title' => 'Search and Replace Scanner',
     'description' => 'Configure defaults and what fields can be searched and replaced.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('scanner_admin_form'),
     'access arguments' => array('administer scanner settings'),
+    'file' => 'scanner.admin.inc',
   );
 
   return $items;
@@ -1158,87 +1148,6 @@ function scanner_execute($searchtype = 'search') {
 
     return theme('scanner_replace_results', array('results' => $results));
   }
-}
-
-// ***************************************************************************
-// Settings ******************************************************************
-// ***************************************************************************
-/**
- * Search and Replace Settings form.
- *
- * @return $form
- */
-function scanner_admin_form($form, &$form_state) {
-  $form['settings'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Default Options'),
-  );
-  $form['settings']['scanner_mode'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Default: Case Sensitive Search Mode'),
-    '#default_value' => variable_get('scanner_mode', 0),
-  );
-  $form['settings']['scanner_wholeword'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Default: Match Whole Word'),
-    '#default_value' => variable_get('scanner_wholeword', 0),
-  );
-  $form['settings']['scanner_regex'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Default: Regular Expression Search'),
-    '#default_value' => variable_get('scanner_regex', 0),
-  );
-  $form['settings']['scanner_published'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Default: Search Published Nodes Only'),
-    '#default_value' => variable_get('scanner_published', 1),
-  );
-  $form['settings']['scanner_pathauto'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Default: Maintain Custom Aliases'),
-    '#default_value' => variable_get('scanner_pathauto', 1),
-  );
-
-  if (module_exists('taxonomy')) {
-    $vocabularies = taxonomy_get_vocabularies();
-
-    if (count($vocabularies)) {
-      $options = array();
-      foreach ($vocabularies as $vocabulary) {
-        $options[$vocabulary->vid] = $vocabulary->name;
-      }
-
-      $form['taxonomy'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Allow restrictions by terms in a vocabulary'),
-        '#description' => t('Adds search option to only match nodes tagged with specified terms from these vocabularies.'),
-      );
-      $form['taxonomy']['scanner_vocabulary'] = array(
-        '#type' => 'checkboxes',
-        '#options' => $options,
-        '#default_value' => variable_get('scanner_vocabulary', array()),
-      );
-    }
-  }
-
-  $form['tables'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Fields that will be searched'),
-    '#description' => t('Fields are listed in [nodetype: fieldname] order:'),
-  );
-
-  $table_map = _scanner_get_all_tables_map();
-  usort($table_map, '_scanner_compare_fields_by_name');
-  foreach ($table_map as $item) {
-    $key = 'scanner_' . $item['field'] . '_' . $item['table'] . '_' . $item['type'];
-    $form['tables'][$key] = array(
-      '#type' => 'checkbox',
-      '#title' => filter_xss('<strong>' . $item['type'] . ':</strong> ' . $item['field'], $allowed_values = array('strong', 'p')),
-      '#default_value' => variable_get($key, TRUE),
-    );
-  }
-
-  return system_settings_form($form);
 }
 
 // ***************************************************************************

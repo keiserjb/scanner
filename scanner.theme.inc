@@ -24,7 +24,7 @@ function theme_scanner_results($variables) {
     // @todo use pager to split up results.
   }
   else {
-    drupal_set_message(t('No matches found. Check the !url for fields that can be searched.', array('!url' => l(t('settings'), 'admin/content/scanner/settings'))), 'warning');
+    drupal_set_message(t('No matches found. Check the !url for fields that can be searched.', array('!url' => l(t('settings'), 'admin/config/content/scanner'))), 'warning');
   }
 
   return $output;
@@ -63,7 +63,7 @@ function theme_scanner_replace_results($variables) {
     // @todo use pager to split up results.
   }
   else {
-    drupal_set_message(t('No matches found. Check the !url for fields that can be searched.', array('!url' => l(t('settings'), 'admin/content/scanner/settings'))), 'warning');
+    drupal_set_message(t('No matches found. Check the !url for fields that can be searched.', array('!url' => l(t('settings'), 'admin/config/content/scanner'))), 'warning');
   }
 
   return $output;
