@@ -9,7 +9,7 @@
  * Implements hook_node_presave().
  */
 function scanner_with_fc_tests_node_presave($node) {
-  if (isset($node->devel_generate['word'])) {
+  if (isset($node->devel_generate['word'], $node->field_stuff[LANGUAGE_NONE])) {
     foreach ($node->field_stuff[LANGUAGE_NONE] as $key => &$field) {
       $fc = field_collection_item_load($field['value']);
       if (mt_rand(0, 5) == 5) {

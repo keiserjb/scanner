@@ -11,6 +11,8 @@ Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
 #2973179 by DamienMcKenna: Processing hits "not enough time" if
   max_execution_time is 0.
 #2280999 by DamienMcKenna: Replacement in field collection.
+#2971845 by DamienMcKenna: Write test coverage for the text replacement
+  functionality.
 
 
 Search and Replace Scanner 7.x-1.0-beta1, 2015-10-16

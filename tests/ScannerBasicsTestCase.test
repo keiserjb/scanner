@@ -65,6 +65,10 @@ class ScannerBasicsTestCase extends ScannerBaseTestCase {
     $this->assertNoText('Your search yielded no results.');
     $this->assertText('Search Results');
 
+    // Identify how many items were found.
+    $xpath = $this->xpath('//ol//a');
+    $results_count = count($xpath);
+
     // Try replacing the text.
     $values = array(
       'replace' => $this->replaceWord,
@@ -72,7 +76,7 @@ class ScannerBasicsTestCase extends ScannerBaseTestCase {
     $this->drupalPost(NULL, $values, t('Replace'));
     $this->assertResponse(200);
 
-    // Confirm the confirmation form shows correctly.
+    // Confirm the confirmation form shows the correct information.
     $this->assertText(t('Confirm Replace'));
     $this->assertText(t('Are you sure you want to make the following replacement?'));
     $this->assertText(t('Search for:'));
@@ -81,7 +85,34 @@ class ScannerBasicsTestCase extends ScannerBaseTestCase {
     $this->assertText('[' . $this->replaceWord . ']');
     $this->assertFieldById('edit-confirm');
     $this->assertFieldById('edit-cancel');
+
+    // Submit the confirmation form.
     $this->drupalPost(NULL, array(), t('Yes, Continue'));
+    $this->assertResponse(200);
+    $this->assertText(strip_tags(t('Replacing [%search] with [%replace] ...', array('%search' => $this->word, '%replace' => $this->replaceWord))));
+
+    // There should be the same number of items replaced as there were items
+    // found the first time.
+    $xpath = $this->xpath('//ol//a');
+    $this->assertEqual($results_count, count($xpath));
+
+    // Search the content again, this time look for the replacement word.
+    $this->drupalGet('admin/content/scanner');
+    $this->assertResponse(200);
+    $values = array(
+      'search' => $this->replaceWord,
+    );
+    $this->drupalPost(NULL, $values, t('Search'));
+    $this->assertResponse(200);
+
+    // Make sure the 'no results' message wasn't found.
+    $this->assertNoText('Your search yielded no results.');
+    $this->assertText('Search Results');
+
+    // There should be the same number of results found on this search as there
+    // were items found the first time.
+    $xpath = $this->xpath('//ol//a');
+    $this->assertEqual($results_count, count($xpath));
   }
 
 }
