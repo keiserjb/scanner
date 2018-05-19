@@ -46,7 +46,8 @@ function scanner_menu() {
     'page arguments' => array('scanner_undo_confirm_form'),
     'type' => MENU_CALLBACK,
   );
-  $items['admin/content/scanner/settings'] = array(// Shows up on scanner page as tab.
+  // Shows up on scanner page as tab.
+  $items['admin/content/scanner/settings'] = array(
     'title' => 'Settings',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('scanner_admin_form'),
@@ -54,13 +55,15 @@ function scanner_menu() {
     'type' => MENU_LOCAL_TASK,
     'weight' => 1,
   );
-  $items['admin/content/scanner/undo'] = array(// Shows up on scanner page as tab.
+  // Shows up on scanner page as tab.
+  $items['admin/content/scanner/undo'] = array(
     'title' => 'Undo',
     'page callback' => 'scanner_undo_page',
     'access arguments' => array('perform search and replace'),
     'type' => MENU_LOCAL_TASK,
   );
-  $items['admin/config/content/scanner'] = array(// Shows up on admin page.
+  // Shows up on admin page.
+  $items['admin/config/content/scanner'] = array(
     'title' => 'Search and Replace Scanner',
     'description' => 'Configure defaults and what fields can be searched and replaced.',
     'page callback' => 'drupal_get_form',
@@ -124,7 +127,7 @@ function scanner_permission() {
  * Menu callback; presents the scan form and results.
  */
 function scanner_view() {
-  $output='';
+  $output = '';
 
   // Using set_html_head because it seems unecessary to load a separate css
   // file for just two simple declarations.
@@ -137,15 +140,15 @@ function scanner_view() {
   drupal_add_js("
     jQuery(document).ready(function() {
       var searchfield = jQuery('#edit-search');
-      jQuery('input[type=submit][value=". str_replace('\'', '\\\'', t('Search')) . "]').click(function() {
+      jQuery('input[type=submit][value=" . str_replace('\'', '\\\'', t('Search')) . "]').click(function() {
         var chars = searchfield.val().length;
         if (chars == 0) {
-          alert('". str_replace('\'', '\\\'', t('Please provide some search text and try again.')) . "');
+          alert('" . str_replace('\'', '\\\'', t('Please provide some search text and try again.')) . "');
           searchfield.addClass('error');
           searchfield[0].focus();
           return false;
         } else if (chars < 3) {
-          return confirm('". str_replace('\'', '\\\'', t('Searching for a keyword that has fewer than three characters could take a long time. Are you sure you want to continue?')) . "');
+          return confirm('" . str_replace('\'', '\\\'', t('Searching for a keyword that has fewer than three characters could take a long time. Are you sure you want to continue?')) . "');
         }
         return true;
       });
@@ -182,12 +185,12 @@ function scanner_view() {
       $results = scanner_execute('search');
     }
 
+    // @todo Please change this theme call to use an associative array for
+    // the $variables parameter.
     if ($results) {
-      // TODO Please change this theme call to use an associative array for the $variables parameter.
       $results = '<a name="results"></a><div><h2>' . $resulttxt . '</h2>' . $results;
     }
     else {
-      // TODO Please change this theme call to use an associative array for the $variables parameter.
       $results = t('Your search yielded no results.');
     }
 
@@ -223,6 +226,7 @@ function scanner_view() {
  *
  * @see scanner_form_validate()
  * @see scanner_form_submit()
+ *
  * @ingroup forms
  */
 function scanner_form($form, &$form_state) {
@@ -402,9 +406,9 @@ function scanner_form_submit($form, &$form_state) {
   // Save form input into session.
   $_SESSION['scanner_search']    = $form_state['values']['search'];
   $_SESSION['scanner_preceded']  = $form_state['values']['preceded'];
-  //$_SESSION['scanner_notpreceded'] = $form_state['values']['notpreceded'];
+  // $_SESSION['scanner_notpreceded'] = $form_state['values']['notpreceded'];
   $_SESSION['scanner_followed']  = $form_state['values']['followed'];
-  //$_SESSION['scanner_notfollowed'] = $form_state['values']['notfollowed'];
+  // $_SESSION['scanner_notfollowed'] = $form_state['values']['notfollowed'];
   $_SESSION['scanner_mode']      = $form_state['values']['mode'];
   $_SESSION['scanner_wholeword'] = $form_state['values']['wholeword'];
   $_SESSION['scanner_regex']     = $form_state['values']['regex'];
@@ -415,12 +419,12 @@ function scanner_form_submit($form, &$form_state) {
   }
   $_SESSION['scanner_replace']   = $form_state['values']['replace'];
 
-  /* TODO The 'op' element in the form values is deprecated.
-   Each button can have #validate and #submit functions associated with it.
-   Thus, there should be one button that submits the form and which invokes
-   the normal form_id_validate and form_id_submit handlers. Any additional
-   buttons which need to invoke different validate or submit functionality
-   should have button-specific functions. */
+  // @todo The 'op' element in the form values is deprecated.
+  // Each button can have #validate and #submit functions associated with it.
+  // Thus, there should be one button that submits the form and which invokes
+  // the normal form_id_validate and form_id_submit handlers. Any additional
+  // buttons which need to invoke different validate or submit functionality
+  // should have button-specific functions.
   if ($form_state['values']['op'] == t('Replace')) {
     $_SESSION['scanner_status'] = SCANNER_STATUS_GO_CONFIRM;
   }
@@ -434,6 +438,7 @@ function scanner_form_submit($form, &$form_state) {
  * Form constructor for the confirmation form.
  *
  * @see block_add_block_form_submit()
+ *
  * @ingroup forms
  */
 function scanner_confirm_form($form, &$form_state) {
@@ -507,12 +512,14 @@ function scanner_confirm_form($form, &$form_state) {
   $form['confirm'] = array(
     '#type' => 'submit',
     '#value' => t('Yes, Continue'),
-    '#prefix' => '<div class="scanner-buttons">', //see suffix in cancel button element
+    // see suffix in cancel button element.
+    '#prefix' => '<div class="scanner-buttons">',
   );
   $form['cancel'] = array(
     '#type' => 'submit',
     '#value' => t('No, Cancel'),
-    '#suffix' => '</div>', //see prefix in confirm button element
+    // see prefix in confirm button element.
+    '#suffix' => '</div>',
   );
 
   return $form;
@@ -524,12 +531,12 @@ function scanner_confirm_form($form, &$form_state) {
  * @see scanner_confirm_form()
  */
 function scanner_confirm_form_submit($form, &$form_state) {
-  /* TODO The 'op' element in the form values is deprecated.
-   Each button can have #validate and #submit functions associated with it.
-   Thus, there should be one button that submits the form and which invokes
-   the normal form_id_validate and form_id_submit handlers. Any additional
-   buttons which need to invoke different validate or submit functionality
-   should have button-specific functions. */
+  // @todo The 'op' element in the form values is deprecated.
+  // Each button can have #validate and #submit functions associated with it.
+  // Thus, there should be one button that submits the form and which invokes
+  // the normal form_id_validate and form_id_submit handlers. Any additional
+  // buttons which need to invoke different validate or submit functionality
+  // should have button-specific functions.
   if ($form_state['values']['op'] == t('Yes, Continue')) {
     $_SESSION['scanner_status'] = SCANNER_STATUS_GO_REPLACE;
   }
@@ -548,14 +555,13 @@ function scanner_undo_page() {
 
   $undoQuery = db_select('scanner', 's');
   $undoQuery->fields('s', array('undo_id', 'time', 'searched', 'replaced', 'count', 'undone'))
-            ->orderBy('undo_id', 'DESC');
+    ->orderBy('undo_id', 'DESC');
 
   $sandrs = $undoQuery->execute();
 
   $rows = array();
 
   foreach ($sandrs as $sandr) {
-
     if ($sandr->undone) {
       $operation = l(t('Redo'), 'admin/content/scanner/undo/confirm', array('query' => array('undo_id' => $sandr->undo_id)));
     }
@@ -579,22 +585,21 @@ function scanner_undo_page() {
  * Form constructor for the undo confirmation form.
  *
  * @see scanner_undo_confirm_form_submit()
+ *
  * @ingroup forms
  */
 function scanner_undo_confirm_form($form, &$form_state) {
-
   $undo_id = $_GET['undo_id'];
 
   if ($undo_id > 0) {
-
     $query = db_select('scanner', 's');
     $query->fields('s', array('undo_id', 'searched', 'replaced'))
-          ->condition('undo_id', $undo_id, '=');
+      ->condition('undo_id', $undo_id, '=');
 
     $result = $query->execute();
 
     foreach ($result as $undo) {
-        $undo = $undo;
+      $undo = $undo;
     }
 
   }
@@ -602,10 +607,10 @@ function scanner_undo_confirm_form($form, &$form_state) {
   if ($undo->undo_id > 0) {
     $form['info'] = array(
       '#markup' => '<h2>' . t('Do you want to undo:') . '</h2>' .
-                  '<h3>' . t('Searched for:') . '</h3>' .
-                  '<p>[<em>' . check_plain($undo->searched) . '</em>]</p>' .
-                  '<h3>' . t('Replaced with:') . '</h3>' .
-                  '<p>[<em>' . check_plain($undo->replaced) . '</em>]</p>',
+      '<h3>' . t('Searched for:') . '</h3>' .
+      '<p>[<em>' . check_plain($undo->searched) . '</em>]</p>' .
+      '<h3>' . t('Replaced with:') . '</h3>' .
+      '<p>[<em>' . check_plain($undo->replaced) . '</em>]</p>',
     );
 
     $form['undo_id'] = array(
@@ -639,12 +644,12 @@ function scanner_undo_confirm_form($form, &$form_state) {
  * @see scanner_undo_confirm_form()
  */
 function scanner_undo_confirm_form_submit($form, &$form_state) {
-  /* TODO The 'op' element in the form values is deprecated.
-   Each button can have #validate and #submit functions associated with it.
-   Thus, there should be one button that submits the form and which invokes
-   the normal form_id_validate and form_id_submit handlers. Any additional
-   buttons which need to invoke different validate or submit functionality
-   should have button-specific functions. */
+  // @todo The 'op' element in the form values is deprecated.
+  // Each button can have #validate and #submit functions associated with it.
+  // Thus, there should be one button that submits the form and which invokes
+  // the normal form_id_validate and form_id_submit handlers. Any additional
+  // buttons which need to invoke different validate or submit functionality
+  // should have button-specific functions.
   if ($form_state['values']['op'] == t('Yes, Continue')) {
     $query = db_select('scanner', 's');
     $query->fields('s', array('undo_data', 'undone'))
@@ -677,14 +682,14 @@ function scanner_undo_confirm_form_submit($form, &$form_state) {
     }
 
     drupal_set_message($count . ' ' . t('Nodes reverted'));
-    // TODO Please review the conversion of this statement to the D7 database API syntax.
-
+    // @todo Please review the conversion of this statement to the D7 database
+    // API syntax.
     db_update('scanner')
-    ->fields(array(
+      ->fields(array(
       'undone' => $undone,
     ))
-    ->condition('undo_id', $form_state['values']['undo_id'])
-    ->execute();
+      ->condition('undo_id', $form_state['values']['undo_id'])
+      ->execute();
   }
   else {
     drupal_set_message(t('Undo / Redo canceled'));
@@ -697,7 +702,8 @@ function scanner_undo_confirm_form_submit($form, &$form_state) {
 /**
  * Handles the actual search and replace.
  *
- * @param str $searchtype - either 'search', or 'replace'
+ * @param string $searchtype
+ *
  * @return The themed results.
  */
 function scanner_execute($searchtype = 'search') {
@@ -735,7 +741,8 @@ function scanner_execute($searchtype = 'search') {
   if ($searchtype == 'search') {
     drupal_set_message(t('Searching for: [%search] ...', array('%search' => $search)));
   }
-  else { //searchtype == 'replace'
+  // searchtype == 'replace'.
+  else {
     drupal_set_message(t('Replacing [%search] with [%replace] ...', array('%search' => $search, '%replace' => $replace)));
   }
 
@@ -759,18 +766,22 @@ function scanner_execute($searchtype = 'search') {
     $where = "[[:<:]]" . $preceded . $search . $followed . "[[:>:]]";
     $search_php = '\b' . $preceded_php . $search . $followed_php . '\b';
   }
+
   // Case 2.
   elseif ($wholeword && !$regex) {
     $where = "[[:<:]]" . $preceded . addcslashes($search, SCANNER_REGEX_CHARS) . $followed . "[[:>:]]";
     $search_php = '\b' . $preceded_php . addcslashes($search, SCANNER_REGEX_CHARS) . $followed_php . '\b';
   }
+
   // Case 3.
   elseif (!$wholeword && $regex) {
     $where = $preceded . $search . $followed;
     $search_php = $preceded_php . $search . $followed_php;
   }
+
   // Case 4.
-  else { //!wholeword and !regex:
+  // !wholeword and !regex:
+  else {
     $where = $preceded . addcslashes($search, SCANNER_REGEX_CHARS) . $followed;
     $search_php = $preceded_php . addcslashes($search, SCANNER_REGEX_CHARS) . $followed_php;
   }
@@ -798,7 +809,7 @@ function scanner_execute($searchtype = 'search') {
     $field_label = $map['field_label'];
     $field_summary = NULL;
     $type = $map['type'];
-    $module = isset($map['module'])? $map['module'] : NULL;
+    $module = isset($map['module']) ? $map['module'] : NULL;
     $field_collection_parents = isset($map['field_collection_parents']) ? $map['field_collection_parents'] : NULL;
 
     $query = db_select($table, 't');
@@ -815,6 +826,7 @@ function scanner_execute($searchtype = 'search') {
         case 'link':
           $suffix = 'url';
           break;
+
         default:
           $suffix = 'value';
       }
@@ -833,11 +845,11 @@ function scanner_execute($searchtype = 'search') {
         $fc_table = 'field_revision_' . $fc_this;
         $prev_alias = ($i == $cnt_fc) ? 't' : ('fc' . $i);
         $query->join($fc_table, $fc_alias,
-            format_string('!PREV_ALIAS.entity_id = !FC_ALIAS.!FC_THIS_value AND !PREV_ALIAS.revision_id = !FC_ALIAS.!FC_THIS_!FC_REV',
-                array('!FC_ALIAS' => $fc_alias, '!FC_THIS' => $fc_this, '!PREV_ALIAS' => $prev_alias, '!FC_REV' => $fc_revision_field)));
+          format_string('!PREV_ALIAS.entity_id = !FC_ALIAS.!FC_THIS_value AND !PREV_ALIAS.revision_id = !FC_ALIAS.!FC_THIS_!FC_REV',
+            array('!FC_ALIAS' => $fc_alias, '!FC_THIS' => $fc_this, '!PREV_ALIAS' => $prev_alias, '!FC_REV' => $fc_revision_field)));
         if ($i == 1) {
           $query->join('node', 'n',
-              format_string('!FC_ALIAS.entity_id = n.nid AND !FC_ALIAS.revision_id = n.vid', array('!FC_ALIAS' => $fc_alias)));
+            format_string('!FC_ALIAS.entity_id = n.nid AND !FC_ALIAS.revision_id = n.vid', array('!FC_ALIAS' => $fc_alias)));
         }
       }
     }
@@ -947,7 +959,7 @@ function scanner_execute($searchtype = 'search') {
               }
 
               // Don't want substr to wrap.
-              $start = $match[1]-$context_length > 0 ? $match[1]-$context_length : 0;
+              $start = $match[1] - $context_length > 0 ? $match[1] - $context_length : 0;
               // If the match is close to the beginning of the string, need
               // less context.
               $length = $match[1] >= $context_length ? $context_length : $match[1];
@@ -961,9 +973,9 @@ function scanner_execute($searchtype = 'search') {
 
               $text .= '<strong>' . htmlentities($match[0], ENT_COMPAT, 'UTF-8') . '</strong>';
 
-              if ($append = substr($string, $match[1]+strlen($match[0]), $context_length)) {
+              if ($append = substr($string, $match[1] + strlen($match[0]), $context_length)) {
                 $text .= htmlentities($append, ENT_COMPAT, 'UTF-8');
-                if (strlen($string) - ($match[1]+strlen($match[0])) > $context_length) {
+                if (strlen($string) - ($match[1] + strlen($match[0])) > $context_length) {
                   $text .= '...';
                 }
               }
@@ -1100,9 +1112,8 @@ function scanner_execute($searchtype = 'search') {
           );
         }
 
-        // A revision only created for the first change of the node.
-        // Subsequent changes of the same node do not generate additional
-        // revisions.
+        // A revision only created for the first change of the node. Subsequent
+        // changes of the same node do not generate additional revisions.
         // @todo Need a better way of handling this.
         if (!isset($undo_data[$node->nid]['new_vid'])) {
           $node->revision = TRUE;
@@ -1118,8 +1129,8 @@ function scanner_execute($searchtype = 'search') {
         // Now set to updated vid after node_save().
         $undo_data[$node->nid]['new_vid'] = $node->vid;
       }
-    } // end foreach
-  } // end foreach
+    }
+  }
 
   // If completed.
   if (isset($shutting_down) && !$shutting_down) {
@@ -1130,7 +1141,8 @@ function scanner_execute($searchtype = 'search') {
   if ($searchtype == 'search') {
     return theme('scanner_results', array('results' => $results));
   }
-  else { // searchtype == 'replace'
+  // searchtype == 'replace'.
+  else {
     if (count($undo_data) && !$shutting_down) {
       db_insert('scanner')
         ->fields(array(
@@ -1151,13 +1163,12 @@ function scanner_execute($searchtype = 'search') {
 // ***************************************************************************
 // Settings ******************************************************************
 // ***************************************************************************
-
 /**
  * Search and Replace Settings form.
  *
  * @return $form
  */
-function scanner_admin_form($node, &$form_state) {
+function scanner_admin_form($form, &$form_state) {
   $form['settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Default Options'),
@@ -1270,7 +1281,7 @@ function scanner_admin_form($node, &$form_state) {
  *   value for all text fields found.  Second, it is used to prevent infinite
  *   recursion in the case where a field collection is nested within itself.
  */
-function _scanner_add_field_collection_fields(&$all_field_records, $node_bundle = NULL, $parent_bundle = NULL, $parents = NULL) {
+function _scanner_add_field_collection_fields(array &$all_field_records, $node_bundle = NULL, $parent_bundle = NULL, $parents = NULL) {
   $query = db_select('field_config_instance', 'instance_parent');
   $query->join('field_config', 'config_parent', 'instance_parent.field_name = config_parent.field_name');
   $query->join('field_config_instance', 'instance_child', 'instance_child.bundle = config_parent.field_name');
@@ -1298,7 +1309,8 @@ function _scanner_add_field_collection_fields(&$all_field_records, $node_bundle 
       $all_field_records[] = $record;
     }
     elseif ($record->module == 'field_collection') {
-      // This if statement prevents infinite recursion if a field collection is nested within itself.
+      // This if statement prevents infinite recursion if a field collection is
+      // nested within itself.
       if (!in_array($record->field_name, $field_parents)) {
         $field_parents[] = $record->field_name;
         _scanner_add_field_collection_fields($all_field_records, $record->node_bundle, $record->field_name, $field_parents);
@@ -1319,7 +1331,7 @@ function _scanner_add_field_collection_fields(&$all_field_records, $node_bundle 
  *   Comparison value determining which order these two fields should be sorted
  *   in relation to each other based on field label.
  */
-function _scanner_compare_fields_by_label($left, $right) {
+function _scanner_compare_fields_by_label(array $left, array $right) {
   $cmp = strcmp($left['type'], $right['type']);
   if ($cmp != 0) {
     return $cmp;
@@ -1340,7 +1352,7 @@ function _scanner_compare_fields_by_label($left, $right) {
  *   Comparison value determining which order these two fields should be sorted
  *   in relation to each other based on field name.
  */
-function _scanner_compare_fields_by_name($left, $right) {
+function _scanner_compare_fields_by_name(array $left, array $right) {
   $cmp = strcmp($left['type'], $right['type']);
   if ($cmp != 0) {
     return $cmp;
@@ -1433,13 +1445,24 @@ function _scanner_get_selected_tables_map() {
 }
 
 /**
- * Attempt to stretch the amount of time available for processing so
- * that timeouts don't interrupt search and replace actions.
+ * Attempt to stretch the amount of time available for processing.
  *
- * This only works in hosting environments where changing PHP and
- * Apache settings on the fly is allowed.
+ * This way timeouts won't interrupt search and replace actions. This only works
+ * in hosting environments where changing PHP and Apache settings on the fly is
+ * allowed.
+ *
+ * @param $setting
+ *   The name of the PHP setting to change.
+ * @param $value
+ *   The new value to assign.
+ * @param bool $verbose
+ *   If set to TRUE, an extra message will be displayed indicating the status of
+ *   the execution.
+ *
+ * @return bool
+ *   Indicates whether the setting is changed.
  */
-function _scanner_change_env($setting, $value, $verbose) {
+function _scanner_change_env($setting, $value, $verbose = FALSE) {
   $old_value = ini_get($setting);
 
   if ($old_value != $value && $old_value != 0) {
