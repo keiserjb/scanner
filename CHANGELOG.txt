@@ -1,5 +1,5 @@
-Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
---------------------------------------------------
+Search and Replace Scanner 7.x-1.0, 2018-05-19
+----------------------------------------------
 #2971838 by DamienMcKenna: Add a CHANGELOG.txt file.
 #1193366 by DamienMcKenna, Nitesh Pawar, 44sunsets, Shreya Shetty: Support Link
   field.
