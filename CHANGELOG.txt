@@ -1,5 +1,7 @@
 Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
 --------------------------------------------------
+#2978697 by DamienMcKenna: Add link on admin/content/scanner page to settings
+  page.
 
 
 Search and Replace Scanner 7.x-1.0, 2018-05-19

@@ -262,6 +262,13 @@ function scanner_form($form, &$form_state) {
     $terms = NULL;
   }
 
+  $form['settings_link'] = array(
+    '#markup' => t('The list of fields which will be searched and other options can be controlled from the !link.', array('!link' => l('settings page', 'admin/config/content/scanner'))),
+    '#prefix' => '<p>',
+    '#suffix' => '</p>',
+    '#access' => user_access('administer scanner settings'),
+  );
+
   $form['search'] = array(
     '#type' => 'textfield',
     '#default_value' => $search,
