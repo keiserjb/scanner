@@ -804,7 +804,6 @@ function scanner_execute($searchtype = 'search') {
     $table = $map['table'];
     $field = $map['field'];
     $field_label = $map['field_label'];
-    $field_summary = NULL;
     $type = $map['type'];
     $module = isset($map['module']) ? $map['module'] : NULL;
     $field_collection_parents = isset($map['field_collection_parents']) ? $map['field_collection_parents'] : NULL;
@@ -814,14 +813,10 @@ function scanner_execute($searchtype = 'search') {
       $vid = 'vid';
     }
     else {
-      if (db_field_exists($table, $field . '_summary')) {
-        $field_summary = $field . '_summary';
-      }
-
       // Work out the field 'value' to use.
       switch ($module) {
         case 'link':
-          $suffix = 'url';
+          $suffix = 'title';
           break;
 
         default:
@@ -854,35 +849,37 @@ function scanner_execute($searchtype = 'search') {
       // Must use vid and revision_id here. Make sure it saves as new revision.
       $query->join('node', 'n', 't.' . $vid . ' = n.vid');
     }
-    if (is_array($terms) && count($terms)) {
-      $db_or = db_or();
+    if (is_array($terms) && !empty($terms)) {
+      $terms_or = db_or();
       $query->join('taxonomy_index', 'tx', 'n.nid = tx.nid');
       foreach ($terms as $term) {
-        $db_or->condition('tx.tid', $term);
+        $terms_or->condition('tx.tid', $term);
       }
-      $query->condition($db_or);
+      $query->condition($terms_or);
     }
     $query->addField('t', $field, 'content');
-    if (isset($field_summary)) {
-      $query->addField('t', $field_summary, 'summary');
-    }
+
     if ($table != 'node_revision') {
       $query->fields('t', array('delta'));
     }
     $query->fields('n', array('nid', 'title'));
+
     $query->condition('n.type', $type, '=');
 
+    // Build the master 'where' arguments.
     $or = db_or();
     $binary = $mode ? ' BINARY' : '';
-    $or->condition('t.' . $field, $where, 'REGEXP' . $binary);
-    if (isset($field_summary)) {
-      $or->condition('t.' . $field_summary, $where, 'REGEXP' . $binary);
+    // Trigger hook_scanner_query_where().
+    foreach (module_implements('scanner_query_where') as $module_name) {
+      $function = $module_name . '_scanner_query_where';
+      $function($or, $table, $field, $where, $binary);
     }
     $query->condition($or);
 
     if ($published) {
       $query->condition('n.status', '1', '=');
     }
+
     $result = $query->execute();
     $shutting_down = FALSE;
 
@@ -932,17 +929,22 @@ function scanner_execute($searchtype = 'search') {
 
       $node = node_load($row->nid);
 
+      // Build the regular expression used later.
+      $regexstr = "/$search_php/$flag";
+
       // Search.
       if ($searchtype == 'search') {
-        $regexstr = "/$search_php/$flag";
         $matches = array('0' => array());
+        $hits = 0;
 
         // Assign matches in the base text field to $matches[0].
-        $hits = preg_match_all($regexstr, $content, $matches, PREG_OFFSET_CAPTURE);
-        // Assign summary matches to $matches[1].
-        $hits += preg_match_all($regexstr, $summary, $matches_summary, PREG_OFFSET_CAPTURE);
-
-        $matches = array_merge($matches, $matches_summary);
+        // Trigger hook_scanner_preg_match_all().
+        foreach (module_implements('scanner_preg_match_all') as $module_name) {
+          $function = $module_name . '_scanner_preg_match_all';
+          $new_matches = array();
+          $hits += $function($new_matches, $regexstr, $row);
+          $matches = array_merge($matches, $new_matches);
+        }
 
         if ($hits > 0) {
           $context_length = 70;
@@ -951,9 +953,9 @@ function scanner_execute($searchtype = 'search') {
             $string = $key == 0 ? $content : $summary;
             foreach ($item as $match) {
               $text .= '<li>';
-              if ($key == 1) {
-                $text .= '<i>Summary:</i> ';
-              }
+              // if ($key == 1) {
+              //   $text .= '<i>Summary:</i> ';
+              // }
 
               // Don't want substr to wrap.
               $start = $match[1] - $context_length > 0 ? $match[1] - $context_length : 0;
@@ -1017,7 +1019,6 @@ function scanner_execute($searchtype = 'search') {
         }
 
         $hits = 0;
-        $content_new = preg_replace("/$search_php/$flag", $replace, $content, -1, $hits);
         preg_match('/(.+)_' . $suffix . '$/', $field, $matches);
 
         // Field collections.
@@ -1028,7 +1029,7 @@ function scanner_execute($searchtype = 'search') {
               $fc_changed = FALSE;
               foreach ($fc->{$matches[1]}[LANGUAGE_NONE] as $fc_key => $fc_val) {
                 $fc_hits = 0;
-                $fc_content = preg_replace("/$search_php/$flag", $replace, $fc_val[$suffix], -1, $fc_hits);
+                $fc_content = preg_replace($regexstr, $replace, $fc_val[$suffix], -1, $fc_hits);
                 if ($fc_content != $fc_val['value']) {
                   $fc_changed = TRUE;
                   $fc->{$matches[1]}[LANGUAGE_NONE][$fc_key][$suffix] = $fc_content;
@@ -1037,7 +1038,7 @@ function scanner_execute($searchtype = 'search') {
                 // Also need to handle the summary part of text+summary fields.
                 if (isset($fc_val['summary'])) {
                   $summary_hits = 0;
-                  $fc_summary = preg_replace("/$search_php/$flag", $replace, $fc_val['summary'], -1, $summary_hits);
+                  $fc_summary = preg_replace($regexstr, $replace, $fc_val['summary'], -1, $summary_hits);
                   if ($fc_summary != $fc_val['summary']) {
                     $fc_hits += $summary_hits;
                     $fc_changed = TRUE;
@@ -1080,32 +1081,20 @@ function scanner_execute($searchtype = 'search') {
 
         // Normal node fields.
         else {
-          if (!empty($matches[0])) {
-            $language = field_language('node', $node, $matches[1]);
-
-            // Text Field or Text Area.
-            $node->{$matches[1]}[$language][$row->delta][$suffix] = $content_new;
-
-            // Summary.
-            if (isset($node->{$matches[1]}[$language][$row->delta]['summary'])) {
-              $summary = $node->{$matches[1]}[$language][$row->delta]['summary'];
-              $node->{$matches[1]}[$language][$row->delta]['summary'] = preg_replace("/$search_php/$flag", $replace, $summary, -1, $hits_summary);
-              $hits += $hits_summary;
-            }
-          }
-          else {
-            // Other type such as a Title.
-            $node->$field = $content_new;
+          // Trigger hook_scanner_preg_replace().
+          foreach (module_implements('scanner_preg_replace') as $module_name) {
+            $function = $module_name . '_scanner_preg_replace';
+            $hits += $function($node, $field, $matches, $row, $regexstr, $replace);
           }
 
           // Update the counter.
           $results[] = array(
             'title' => $node->title,
+            'nid' => $node->nid,
             'type' => $node->type,
             'count' => $hits,
             'field' => $field,
             'field_label' => $field_label,
-            'nid' => $node->nid,
           );
         }
 
@@ -1395,4 +1384,103 @@ function _scanner_change_env($setting, $value, $verbose = FALSE) {
       return FALSE;
     }
   }
+}
+
+/**
+ * Implements hook_scanner_query_where().
+ */
+function scanner_scanner_query_where(&$or, $table, $field, $where, $binary) {
+  // Base field.
+  $or->condition('t.' . $field, $where, 'REGEXP' . $binary);
+}
+
+/**
+ * Implements hook_scanner_query_where().
+ */
+function text_scanner_query_where(&$or, $table, $field, $where, $binary) {
+  // Performed on behalf of text.module.
+  $field_summary = rtrim($field, '_value') . '_summary';
+  if (db_field_exists($table, $field_summary)) {
+    $or->condition('t.' . $field_summary, $where, 'REGEXP' . $binary);
+  }
+}
+
+/**
+ * Implements hook_scanner_query_alter().
+ */
+function text_scanner_query_alter(&$query, $map, $table, $field) {
+  // Performed on behalf of text.module.
+  $summary_field = rtrim($field, '_value') . '_summary';
+
+  // A 'summary' value exists for this field.
+  if (db_field_exists($table, $summary_field)) {
+    $query->addField('t', $field_summary, 'summary');
+  }
+}
+
+/**
+ * Implements hook_scanner_query_alter().
+ */
+function node_scanner_query_alter(&$query, $map, $table, $field) {
+  // Performed on behalf of node.module.
+  $query->condition('n.status', '1', '=');
+}
+
+/**
+ * Implements hook_scanner_preg_match_all().
+ */
+function scanner_scanner_preg_match_all(&$matches, $regexstr, $row) {
+  return preg_match_all($regexstr, $row->content, $matches, PREG_OFFSET_CAPTURE);
+}
+
+/**
+ * Implements hook_scanner_preg_match_all().
+ */
+function text_scanner_preg_match_all(&$matches, $regexstr, $row) {
+  // Performed on behalf of text.module.
+  if (!empty($row->summary)) {
+    return preg_match_all($regexstr, $row->summary, $matches, PREG_OFFSET_CAPTURE);
+  }
+  return 0;
+}
+
+/**
+ * Implements hook_scanner_preg_replace().
+ */
+function scanner_scanner_preg_replace(&$node, $field, $matches, $row, $regexstr, $replace) {
+  $language = NULL;
+
+  if (!empty($matches[1])) {
+    $language = field_language('node', $node, $matches[1]);
+    $old_value = $node->{$matches[1]}[$language][$row->delta]['value'];
+  }
+  else {
+    $old_value = $node->{$field};
+  }
+
+  // Replace the string.
+  $new_value = preg_replace($regexstr, $replace, $old_value, -1, $hits);
+
+  if (!empty($matches[1])) {
+    $node->{$matches[1]}[$language][$row->delta]['value'] = $new_value;
+  }
+  else {
+    $node->{$field} = $new_value;
+  }
+
+  return $hits;
+}
+
+/**
+ * Implements hook_scanner_preg_replace().
+ */
+function text_scanner_preg_replace(&$node, $field, $matches, $row, $regexstr, $replace) {
+  // Performed on behalf of text.module.
+  if (!empty($row->summary) && !empty($matches)) {
+    $old_value = $node->{$matches[1]}[$language][$row->delta]['summary'];
+    $new_value = preg_replace($regexstr, $replace, $old_value, -1, $hits);
+    $node->{$matches[1]}[$language][$row->delta]['summary'] = $new_value;
+    return $hits;
+  }
+  return 0;
 }

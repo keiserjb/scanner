@@ -28,6 +28,7 @@ class ScannerBasicsTestCase extends ScannerBaseTestCase {
    * {@inheritdoc}
    */
   public function setUp(array $modules = array()) {
+    $modules[] = 'devel';
     parent::setUp($modules);
 
     // Log in as user 1, to avoid permissions problems.
