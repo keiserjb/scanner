@@ -808,21 +808,16 @@ function scanner_execute($searchtype = 'search') {
     $module = isset($map['module']) ? $map['module'] : NULL;
     $field_collection_parents = isset($map['field_collection_parents']) ? $map['field_collection_parents'] : NULL;
 
+    // Allow the table suffix to be altered.
+    $suffix = 'value';
+    // Trigger hook_scanner_field_suffix_alter().
+    drupal_alter('scanner_field_suffix', $suffix, $map);
+
     $query = db_select($table, 't');
     if ($table == 'node_revision') {
       $vid = 'vid';
     }
     else {
-      // Work out the field 'value' to use.
-      switch ($module) {
-        case 'link':
-          $suffix = 'title';
-          break;
-
-        default:
-          $suffix = 'value';
-      }
-
       $field = $field . '_' . $suffix;
       $field_label = $field_label . '_' . $suffix;
       $vid = 'revision_id';
@@ -1146,47 +1141,11 @@ function scanner_execute($searchtype = 'search') {
   }
 }
 
-// ***************************************************************************
-// Internal Utility Functions ************************************************
-// ***************************************************************************
 /**
- * Add all text fields that are buried in field collections.
- *
- * This function will search recursively down any level of field collection
- * nesting to find all text fields.  Note that if a field collection is nested
- * within itself, this function will not traverse the field collection a second
- * time (which would otherwise result in infinite recusion).
- *
- * @param array $all_field_records
- *   Array of field records curerntly being built.
- * @param string $node_bundle
- *   The name of the node type being searched. Initially passed in as NULL b/c
- *   the first time this function runs it finds all "top level" field
- *   collections, which can be across multiple node types.  For each field
- *   collection instance found, however, if there are field collections inside
- *   of it we call this function recursively to find more fields.  On that
- *   recursive call, we pass in the node type where the top level field
- *   collection was found so that we have the appropriate node type to add to
- *   the text field records added to $all_field_records.
- * @param string $parent_bundle
- *   The bundle in which we are currently searching for field collections.
- *   Initially passed in as NULL b/c the first time this function runs it finds
- *   all "top level" field collections, which can be across multiple node types
- *   (a.k.a. bundles).  For each field collection instance found, however, if
- *   there are field collections inside of it we call this function recursively
- *   to find more fields.  On that recursive call, we pass in the bundle of the
- *   current field collection being searched so that the query in the recursive
- *   call can search for fields within that bundle.
- * @param array $parents
- *   An array tracking all field collection parents for text fields we
- *   eventually find.  Initially passed in as NULL b/c the first time this
- *   function runs it finds all "top level" field collections, which must each
- *   have its own instance of the $parents array.  The $parents array serves
- *   two purposes.  First, it is used to set the "field_collection_parents"
- *   value for all text fields found.  Second, it is used to prevent infinite
- *   recursion in the case where a field collection is nested within itself.
+ * Implements hook_scanner_fields_alter().
  */
-function _scanner_add_field_collection_fields(array &$all_field_records, $node_bundle = NULL, $parent_bundle = NULL, $parents = NULL) {
+function field_collection_scanner_fields_alter(array &$all_field_records, $node_bundle = NULL, $parent_bundle = NULL, $parents = NULL) {
+  // On behalf of field_collection.module.
   $query = db_select('field_config_instance', 'instance_parent');
   $query->join('field_config', 'config_parent', 'instance_parent.field_name = config_parent.field_name');
   $query->join('field_config_instance', 'instance_child', 'instance_child.bundle = config_parent.field_name');
@@ -1218,7 +1177,7 @@ function _scanner_add_field_collection_fields(array &$all_field_records, $node_b
       // nested within itself.
       if (!in_array($record->field_name, $field_parents)) {
         $field_parents[] = $record->field_name;
-        _scanner_add_field_collection_fields($all_field_records, $record->node_bundle, $record->field_name, $field_parents);
+        field_collection_scanner_fields_alter($all_field_records, $record->node_bundle, $record->field_name, $field_parents);
       }
     }
   }
@@ -1274,9 +1233,10 @@ function _scanner_compare_fields_by_name(array $left, array $right) {
  *   used for diplaying/querying.
  */
 function _scanner_get_all_tables_map() {
+  $tables_map = array();
+
   // Build list of title fields for all node types.
-  $ntypes = node_type_get_types();
-  foreach ($ntypes as $type) {
+  foreach (node_type_get_types() as $type) {
     if ($type->has_title) {
       $tables_map[] = array(
         'type' => $type->type,
@@ -1287,46 +1247,37 @@ function _scanner_get_all_tables_map() {
     }
   }
 
-  $all_field_records = $fields_type = array();
+  $all_field_records = array();
 
-  if (module_exists('field')) {
-    $fields_type[] = 'text';
-  }
-  if (module_exists('link')) {
-    $fields_type[] = 'link';
-  }
+  // Trigger hook_scanner_field_types().
+  foreach (module_invoke_all('scanner_field_types') as $field_type) {
+    $query = db_select('field_config_instance', 'fci');
+    $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
+    $query->fields('fci', array('field_name'));
+    $query->fields('fc', array('module'));
+    $query->addField('fci', 'bundle', 'node_bundle');
+    $query->condition('fci.entity_type', 'node');
+    $query->condition('fc.module', $field_type, '=');
 
-  if (!empty($fields_type)) {
-    foreach ($fields_type as $fieldType) {
-      $query = db_select('field_config_instance', 'fci');
-      $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
-      $query->fields('fci', array('field_name'));
-      $query->fields('fc', array('module'));
-      $query->addField('fci', 'bundle', 'node_bundle');
-      $query->condition('fci.entity_type', 'node');
-      $query->condition('fc.module', $fieldType, '=');
-
-      $result = $query->execute();
-
-      foreach ($result as $record) {
-        $all_field_records[] = $record;
-      }
+    foreach ($query->execute() as $record) {
+      $all_field_records[] = $record;
     }
   }
 
-  if (module_exists('field_collection')) {
-    _scanner_add_field_collection_fields($all_field_records);
-  }
+  // Trigger hook_scanner_fields_alter().
+  drupal_alter('scanner_fields', $all_field_records);
 
-  foreach ($all_field_records as $record) {
-    $tables_map[] = array(
-      'type' => $record->node_bundle,
-      'field' => $record->field_name,
-      'field_label' => (empty($record->field_collection_parents) ? '' : join('->', $record->field_collection_parents) . '->') . $record->field_name,
-      'table' => 'field_revision_' . $record->field_name,
-      'field_collection_parents' => isset($record->field_collection_parents) ? $record->field_collection_parents : NULL,
-      'module' => $record->module,
-    );
+  if (!empty($all_field_records)) {
+    foreach ($all_field_records as $record) {
+      $tables_map[] = array(
+        'type' => $record->node_bundle,
+        'field' => $record->field_name,
+        'field_label' => (empty($record->field_collection_parents) ? '' : join('->', $record->field_collection_parents) . '->') . $record->field_name,
+        'table' => 'field_revision_' . $record->field_name,
+        'field_collection_parents' => isset($record->field_collection_parents) ? $record->field_collection_parents : NULL,
+        'module' => $record->module,
+      );
+    }
   }
 
   return $tables_map;
@@ -1395,6 +1346,66 @@ function scanner_scanner_query_where(&$or, $table, $field, $where, $binary) {
 }
 
 /**
+ * Implements hook_scanner_preg_match_all().
+ */
+function scanner_scanner_preg_match_all(&$matches, $regexstr, $row) {
+  return preg_match_all($regexstr, $row->content, $matches, PREG_OFFSET_CAPTURE);
+}
+
+/**
+ * Implements hook_scanner_preg_replace().
+ */
+function scanner_scanner_preg_replace(&$node, $field, $matches, $row, $regexstr, $replace) {
+  $language = NULL;
+  $hits = 0;
+  $old_value = NULL;
+
+  if (!empty($matches[1])) {
+    $language = field_language('node', $node, $matches[1]);
+    // Not every field has a 'value'.
+    if (isset($node->{$matches[1]}[$language][$row->delta]['value'])) {
+      $old_value = $node->{$matches[1]}[$language][$row->delta]['value'];
+    }
+  }
+  else {
+    $old_value = $node->{$field};
+  }
+
+  // Replace the string if one was identified.
+  if (isset($old_value)) {
+    $new_value = preg_replace($regexstr, $replace, $old_value, -1, $hits);
+  }
+
+  if (!empty($matches[1])) {
+    // Not every field has a 'value'.
+    if (isset($node->{$matches[1]}[$language][$row->delta]['value'])) {
+      $node->{$matches[1]}[$language][$row->delta]['value'] = $new_value;
+    }
+  }
+  else {
+    $node->{$field} = $new_value;
+  }
+
+  return $hits;
+}
+
+/**
+ * Implements hook_scanner_query_alter().
+ */
+function node_scanner_query_alter(&$query, $map, $table, $field) {
+  // Performed on behalf of node.module.
+  $query->condition('n.status', '1', '=');
+}
+
+/**
+ * Implements hook_scanner_field_types().
+ */
+function text_scanner_field_types() {
+  // Performed on behalf of text.module.
+  return array('text');
+}
+
+/**
  * Implements hook_scanner_query_where().
  */
 function text_scanner_query_where(&$or, $table, $field, $where, $binary) {
@@ -1419,21 +1430,6 @@ function text_scanner_query_alter(&$query, $map, $table, $field) {
 }
 
 /**
- * Implements hook_scanner_query_alter().
- */
-function node_scanner_query_alter(&$query, $map, $table, $field) {
-  // Performed on behalf of node.module.
-  $query->condition('n.status', '1', '=');
-}
-
-/**
- * Implements hook_scanner_preg_match_all().
- */
-function scanner_scanner_preg_match_all(&$matches, $regexstr, $row) {
-  return preg_match_all($regexstr, $row->content, $matches, PREG_OFFSET_CAPTURE);
-}
-
-/**
  * Implements hook_scanner_preg_match_all().
  */
 function text_scanner_preg_match_all(&$matches, $regexstr, $row) {
@@ -1442,33 +1438,6 @@ function text_scanner_preg_match_all(&$matches, $regexstr, $row) {
     return preg_match_all($regexstr, $row->summary, $matches, PREG_OFFSET_CAPTURE);
   }
   return 0;
-}
-
-/**
- * Implements hook_scanner_preg_replace().
- */
-function scanner_scanner_preg_replace(&$node, $field, $matches, $row, $regexstr, $replace) {
-  $language = NULL;
-
-  if (!empty($matches[1])) {
-    $language = field_language('node', $node, $matches[1]);
-    $old_value = $node->{$matches[1]}[$language][$row->delta]['value'];
-  }
-  else {
-    $old_value = $node->{$field};
-  }
-
-  // Replace the string.
-  $new_value = preg_replace($regexstr, $replace, $old_value, -1, $hits);
-
-  if (!empty($matches[1])) {
-    $node->{$matches[1]}[$language][$row->delta]['value'] = $new_value;
-  }
-  else {
-    $node->{$field} = $new_value;
-  }
-
-  return $hits;
 }
 
 /**
@@ -1483,4 +1452,62 @@ function text_scanner_preg_replace(&$node, $field, $matches, $row, $regexstr, $r
     return $hits;
   }
   return 0;
+}
+
+/**
+ * Implements hook_scanner_field_types().
+ */
+function link_scanner_field_types() {
+  // Performed on behalf of link.module.
+  return array('link');
+}
+
+/**
+ * Implements hook_scanner_field_suffix_alter().
+ */
+function link_scanner_field_suffix_alter(&$suffix, $map) {
+  // Performed on behalf of link.module.
+  if (isset($map['module']) && $map['module'] == 'link') {
+    $suffix = 'title';
+  }
+}
+
+/**
+ * Implements hook_scanner_query_where().
+ */
+function link_scanner_query_where(&$or, $table, $field, $where, $binary) {
+  // Performed on behalf of link.module.
+  if (strpos($field, '_title') != FALSE) {
+    $field_url = rtrim($field, '_title') . '_url';
+    if (db_field_exists($table, $field_url)) {
+      $or->condition('t.' . $field_url, $where, 'REGEXP' . $binary);
+    }
+  }
+}
+
+/**
+ * Implements hook_scanner_preg_replace().
+ */
+function link_scanner_preg_replace(&$node, $field, $matches, $row, $regexstr, $replace) {
+  // Performed on behalf of link.module.
+  $hits = 0;
+
+  if (!empty($matches[1])) {
+    $language = field_language('node', $node, $matches[1]);
+
+    // The Link module uses two field values - 'title' and 'url', so each one
+    // needs to be checked separately.
+    foreach (array('title', 'url') as $field_key) {
+      if (isset($node->{$matches[1]}[$language][$row->delta][$field_key])) {
+        $old_value = $node->{$matches[1]}[$language][$row->delta][$field_key];
+        $new_value = preg_replace($regexstr, $replace, $old_value, -1, $new_hits);
+        if ($new_hits > 0) {
+          $node->{$matches[1]}[$language][$row->delta][$field_key] = $new_value;
+          $hits += $new_hits;
+        }
+      }
+    }
+  }
+
+  return $hits;
 }

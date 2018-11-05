@@ -4,6 +4,7 @@ Search and Replace Scanner 7.x-1.x-dev, xxxx-xx-xx
   page.
 #2978853 by DamienMcKenna: Refactor codebase to make it easier to extend, added
   hooks so other modules can extend the search/replace logic.
+#2976444 by DamienMcKenna: Fix Link field handling.
 
 
 Search and Replace Scanner 7.x-1.0, 2018-05-19

@@ -18,7 +18,6 @@ function theme_scanner_results($variables) {
     $output = '<p>Found matches in ' . $total . ' fields:</p>';
     $output .= '<ol class="scanner-results scanner-search-results">';
     foreach ($results as $item) {
-      dpm($item);
       $output .= theme('scanner_item', array('item' => $item));
     }
     $output .= '</ol>';

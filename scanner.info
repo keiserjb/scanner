@@ -15,6 +15,10 @@ files[] = tests/ScannerUiTestCase.test
 ; Basic search & replace functionality.
 files[] = tests/ScannerBasicsTestCase.test
 
-; Field Collection integration.
+; Field Collection module integration.
 test_dependencies[] = field_collection
 files[] = tests/ScannerWithFieldCollectionTestCase.test
+
+; Link module integration.
+test_dependencies[] = link
+files[] = tests/ScannerWithLinkTestCase.test
