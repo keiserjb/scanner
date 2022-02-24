@@ -1,0 +1,30 @@
+[ScannerBaseTestCase]
+name = ScannerBaseTestCase
+description = ScannerBaseTestCase
+group = scanner_with_link_tests
+file = ScannerBaseTestCase.test
+
+[ScannerBasicsTestCase]
+name = Scanner basics
+description = Test the basic search & replace functionality.
+group = scanner
+file = ScannerBasicsTestCase.test
+
+[ScannerUiTestCase]
+name = Scanner UI
+description = Confirm that the Scanner module admin UI works.
+group = scanner
+file = ScannerUiTestCase.test
+
+[ScannerWithFieldCollectionTestCase]
+name = Scanner with Field Collection
+description = Repeat the base tests with Field Collection.
+group = scanner
+file = ScannerWithFieldCollectionTestCase.test
+
+[ScannerWithLinkTestCase]
+name = Scanner with Link
+description = Repeat the base tests with Link.
+group = scanner
+file = ScannerWithLinkTestCase.test
+

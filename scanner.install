@@ -58,9 +58,46 @@ function scanner_schema() {
   return $schema;
 }
 
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function scanner_update_7100() { }
+
 /**
- * Rebuild the menu cache.
+ * Implements hook_update_last_removed().
  */
-function scanner_update_7100() {
-  variable_set('menu_rebuild_needed', TRUE);
+function scanner_update_last_removed() {
+  return 7100;
+}
+
+/**
+ * Migrate scanner variables to config.
+ */
+function scanner_update_1000() {
+  $config = config('scanner.settings');
+  $config->set('scanner_mode', update_variable_get('scanner_mode', '0'));
+  $config->set('scanner_wholeword', update_variable_get('scanner_wholeword', '0'));
+  $config->set('scanner_regex', update_variable_get('scanner_regex', '0'));
+  $config->set('scanner_published', update_variable_get('scanner_published', '1'));
+  $config->set('scanner_pathauto', update_variable_get('scanner_pathauto', '1'));
+  $config->set('scanner_vocabulary', update_variable_get('scanner_vocabulary', array()));
+  $config->set('scanner_partially_processed_useruid', update_variable_get('scanner_partially_processed_useruid', 'dynamic variable in file /scanner/scanner.module line 715'));
+  $config->set('scanner_partial_undo_useruid', update_variable_get('scanner_partial_undo_useruid', 'dynamic variable in file /scanner/scanner.module line 716'));
+  $config->save();
+
+  update_variable_del('scanner_mode');
+  update_variable_del('scanner_wholeword');
+  update_variable_del('scanner_regex');
+  update_variable_del('scanner_published');
+  update_variable_del('scanner_pathauto');
+  update_variable_del('scanner_vocabulary');
+  update_variable_del('scanner_partially_processed_useruid');
+  update_variable_del('scanner_partial_undo_useruid');
+}
+
+/**
+ * Implements hook_install().
+ */
+function scanner_install() {
+  // Dynamically generated variable data was detected.
+  // /scanner/scanner.module line 715
+  // /scanner/scanner.module line 716
 }

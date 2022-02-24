@@ -9,6 +9,8 @@
  * The main settings form.
  */
 function scanner_admin_form($form, &$form_state) {
+  $config = config('scanner.settings');
+  $form['#config'] = 'scanner.settings';
   $form['settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Default options'),
@@ -16,27 +18,27 @@ function scanner_admin_form($form, &$form_state) {
   $form['settings']['scanner_mode'] = array(
     '#type' => 'checkbox',
     '#title' => t('Default: Case Sensitive Search Mode'),
-    '#default_value' => variable_get('scanner_mode', 0),
+    '#default_value' => $config->get('scanner_mode'),
   );
   $form['settings']['scanner_wholeword'] = array(
     '#type' => 'checkbox',
     '#title' => t('Default: Match Whole Word'),
-    '#default_value' => variable_get('scanner_wholeword', 0),
+    '#default_value' => $config->get('scanner_wholeword'),
   );
   $form['settings']['scanner_regex'] = array(
     '#type' => 'checkbox',
     '#title' => t('Default: Regular Expression Search'),
-    '#default_value' => variable_get('scanner_regex', 0),
+    '#default_value' => $config->get('scanner_regex'),
   );
   $form['settings']['scanner_published'] = array(
     '#type' => 'checkbox',
     '#title' => t('Default: Search Published Nodes Only'),
-    '#default_value' => variable_get('scanner_published', 1),
+    '#default_value' => $config->get('scanner_published'),
   );
   $form['settings']['scanner_pathauto'] = array(
     '#type' => 'checkbox',
     '#title' => t('Default: Maintain Custom Aliases'),
-    '#default_value' => variable_get('scanner_pathauto', 1),
+    '#default_value' => $config->get('scanner_pathauto'),
   );
 
   if (module_exists('taxonomy')) {
@@ -56,7 +58,7 @@ function scanner_admin_form($form, &$form_state) {
       $form['taxonomy']['scanner_vocabulary'] = array(
         '#type' => 'checkboxes',
         '#options' => $options,
-        '#default_value' => variable_get('scanner_vocabulary', array()),
+        '#default_value' => $config->get('scanner_vocabulary'),
       );
     }
   }
@@ -71,10 +73,11 @@ function scanner_admin_form($form, &$form_state) {
   usort($table_map, '_scanner_compare_fields_by_name');
   foreach ($table_map as $item) {
     $key = 'scanner_' . $item['field'] . '_' . $item['table'] . '_' . $item['type'];
+    // TODO This variable was probably removed in Backdrop without replacement.
     $form['tables'][$key] = array(
       '#type' => 'checkbox',
       '#title' => filter_xss('<strong>' . $item['type'] . ':</strong> ' . $item['field'], $allowed_values = array('strong', 'p')),
-      '#default_value' => variable_get($key, TRUE),
+      '#default_value' => config_get($key, TRUE),
     );
   }
 

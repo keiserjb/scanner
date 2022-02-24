@@ -1,6 +1,7 @@
 name = Scanner with Link
 description = "Some helper logic for the Scanner module's tests."
-core = 7.x
+backdrop = 1.x
+type = module
 
 ; Don't show this on the modules admin page.
 hidden = TRUE

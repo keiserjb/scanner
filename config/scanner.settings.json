@@ -1,0 +1,11 @@
+{
+    "_config_name": "scanner.settings",
+    "scanner_mode": "0",
+    "scanner_wholeword": "0",
+    "scanner_regex": "0",
+    "scanner_published": "1",
+    "scanner_pathauto": "1",
+    "scanner_vocabulary": [],
+    "scanner_partially_processed_useruid": "dynamic variable in file /scanner/scanner.module line 715",
+    "scanner_partial_undo_useruid": "dynamic variable in file /scanner/scanner.module line 716"
+}

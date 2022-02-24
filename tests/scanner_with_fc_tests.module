@@ -39,3 +39,11 @@ function scanner_with_fc_tests_node_presave($node) {
     }
   }
 }
+
+/**
+ * Implements hook_autoload_info().
+ */
+function scanner_with_fc_tests_autoload_info() {
+  return array(
+  );
+}

@@ -7,7 +7,7 @@
   /**
    * Prevents submit button double-click on replace confirmation form.
    */
-  Drupal.behaviors.hideSubmitButton = {
+  Backdrop.behaviors.hideSubmitButton = {
     attach: function(context) {
       $('input#edit-confirm').click(function() {
         $('.scanner-buttons').css('position','relative')

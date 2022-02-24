@@ -35,7 +35,7 @@ function scanner_menu() {
   $items['admin/content/scanner/scan/confirm'] = array(
     'title' => 'Confirm Replace',
     'access arguments' => array('perform search and replace'),
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('scanner_confirm_form'),
     'type' => MENU_CALLBACK,
   );
@@ -48,14 +48,14 @@ function scanner_menu() {
   $items['admin/content/scanner/undo/confirm'] = array(
     'title' => 'Confirm Undo',
     'access arguments' => array('perform search and replace'),
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('scanner_undo_confirm_form'),
     'type' => MENU_CALLBACK,
   );
   $items['admin/config/content/scanner'] = array(
     'title' => 'Search and Replace Scanner',
     'description' => 'Configure defaults and what fields can be searched and replaced.',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('scanner_admin_form'),
     'access arguments' => array('administer scanner settings'),
     'file' => 'scanner.admin.inc',
@@ -121,13 +121,13 @@ function scanner_view() {
 
   // Using set_html_head because it seems unecessary to load a separate css
   // file for just two simple declarations.
-  drupal_add_css('
+  backdrop_add_css('
       #scanner-form .form-submit { margin-top:0; }
       #scanner-form .form-item { margin-bottom:0; }
     ', array('type' => 'inline'));
 
   // Javascript checks to make sure user has entered some search text.
-  drupal_add_js("
+  backdrop_add_js("
     jQuery(document).ready(function() {
       var searchfield = jQuery('#edit-search');
       jQuery('input[type=submit][value=" . str_replace('\'', '\\\'', t('Search')) . "]').click(function() {
@@ -164,7 +164,7 @@ function scanner_view() {
 
   if (!is_null($search) && $status >= SCANNER_STATUS_GO_SEARCH) {
     if ($status == SCANNER_STATUS_GO_CONFIRM) {
-      drupal_goto('admin/content/scanner/scan/confirm');
+      backdrop_goto('admin/content/scanner/scan/confirm');
     }
     elseif ($status == SCANNER_STATUS_GO_REPLACE) {
       $resulttxt = '<a name="results"></a>' . t('Replacement Results');
@@ -184,8 +184,8 @@ function scanner_view() {
       $results = t('Your search yielded no results.');
     }
 
-    $scanner_form = drupal_get_form('scanner_form');
-    $output = drupal_render($scanner_form);
+    $scanner_form = backdrop_get_form('scanner_form');
+    $output = backdrop_render($scanner_form);
     $output .= $results;
 
     // Clear any old search form input.
@@ -205,10 +205,21 @@ function scanner_view() {
     return $output;
   }
 
-  $scanner_form = drupal_get_form('scanner_form');
-  $output = drupal_render($scanner_form);
+  $scanner_form = backdrop_get_form('scanner_form');
+  $output = backdrop_render($scanner_form);
 
   return $output;
+}
+
+/**
+ * Implements hook_config_info().
+ */
+function scanner_config_info() {
+  $prefixes['scanner.settings'] = array(
+    'label' => t('Search and Replace Scanner settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
 }
 
 /**
@@ -220,6 +231,7 @@ function scanner_view() {
  * @ingroup forms
  */
 function scanner_form($form, &$form_state) {
+  $config = config('scanner.settings');
   $form = array();
 
   if (isset($_SESSION['scanner_search'])) {
@@ -249,11 +261,11 @@ function scanner_form($form, &$form_state) {
     $followed = NULL;
   }
 
-  $mode = isset($_SESSION['scanner_mode']) ? $_SESSION['scanner_mode'] : variable_get('scanner_mode', 0);
-  $wholeword = isset($_SESSION['scanner_wholeword']) ? $_SESSION['scanner_wholeword'] : variable_get('scanner_wholeword', 0);
-  $regex = isset($_SESSION['scanner_regex']) ? $_SESSION['scanner_regex'] : variable_get('scanner_regex', 0);
-  $published = isset($_SESSION['scanner_published']) ? $_SESSION['scanner_published'] : variable_get('scanner_published', 1);
-  $pathauto = isset($_SESSION['scanner_pathauto']) ? $_SESSION['scanner_pathauto'] : variable_get('scanner_pathauto', 1);
+  $mode = isset($_SESSION['scanner_mode']) ? $_SESSION['scanner_mode'] : $config->get('scanner_mode');
+  $wholeword = isset($_SESSION['scanner_wholeword']) ? $_SESSION['scanner_wholeword'] : $config->get('scanner_wholeword');
+  $regex = isset($_SESSION['scanner_regex']) ? $_SESSION['scanner_regex'] : $config->get('scanner_regex');
+  $published = isset($_SESSION['scanner_published']) ? $_SESSION['scanner_published'] : $config->get('scanner_published');
+  $pathauto = isset($_SESSION['scanner_pathauto']) ? $_SESSION['scanner_pathauto'] : $config->get('scanner_pathauto');
 
   if (isset($_SESSION['scanner_terms'])) {
     $terms = $_SESSION['scanner_terms'];
@@ -285,12 +297,12 @@ function scanner_form($form, &$form_state) {
     '#default_value' => $replace,
     '#title' => t('Step 2: Replace with'),
     '#maxlength' => 256,
-    '#access' => user_access('perform search and replace') ? TRUE : FALSE,
+    '#access' => user_access('perform search and replace')?TRUE : FALSE,
   );
   $form['submit_replace'] = array(
     '#type' => 'submit',
     '#value' => t('Replace'),
-    '#access' => user_access('perform search and replace') ? TRUE : FALSE,
+    '#access' => user_access('perform search and replace')?TRUE : FALSE,
   );
 
   $form['options'] = array(
@@ -350,7 +362,7 @@ function scanner_form($form, &$form_state) {
     '#description' => t("Prevent custom URL aliases from being overwritten with ones generated from Path Auto's URL alias patterns."),
   );
 
-  $scanner_vocabularies = array_filter(variable_get('scanner_vocabulary', array()));
+  $scanner_vocabularies = array_filter($config->get('scanner_vocabulary'));
 
   if (count($scanner_vocabularies)) {
     $vocabularies = taxonomy_get_vocabularies();
@@ -441,8 +453,8 @@ function scanner_form_submit($form, &$form_state) {
 function scanner_confirm_form($form, &$form_state) {
   $form = array();
 
-  $form['#attached']['js'][] = drupal_get_path('module', 'scanner') . '/scanner.js';
-  $form['#attached']['css'][] = drupal_get_path('module', 'scanner') . '/scanner.css';
+  $form['#attached']['js'][] = backdrop_get_path('module', 'scanner') . '/scanner.js';
+  $form['#attached']['css'][] = backdrop_get_path('module', 'scanner') . '/scanner.css';
 
   $search    = $_SESSION['scanner_search'];
   $replace   = $_SESSION['scanner_replace'];
@@ -452,7 +464,7 @@ function scanner_confirm_form($form, &$form_state) {
   $regex     = $_SESSION['scanner_regex'];
   $mode      = $_SESSION['scanner_mode'];
 
-  $modetxt = ($mode) ? t('Case sensitive') : t('Not case sensitive: will replace any matches regardless of capitalization.');
+  $modetxt = ($mode)?t('Case sensitive') : t('Not case sensitive: will replace any matches regardless of capitalization.');
 
   $msg = (
     '<p>' . t('Are you sure you want to make the following replacement?') . '</p>' .
@@ -678,7 +690,7 @@ function scanner_undo_confirm_form_submit($form, &$form_state) {
       ++$count;
     }
 
-    drupal_set_message($count . ' ' . t('Nodes reverted'));
+    backdrop_set_message($count . ' ' . t('Nodes reverted'));
     // @todo Please review the conversion of this statement to the D7 database
     // API syntax.
     db_update('scanner')
@@ -689,7 +701,7 @@ function scanner_undo_confirm_form_submit($form, &$form_state) {
       ->execute();
   }
   else {
-    drupal_set_message(t('Undo / Redo canceled'));
+    backdrop_set_message(t('Undo / Redo canceled'));
   }
 
   $form_state['redirect'] = 'admin/content/scanner/undo';
@@ -704,6 +716,7 @@ function scanner_undo_confirm_form_submit($form, &$form_state) {
  * @return The themed results.
  */
 function scanner_execute($searchtype = 'search') {
+  $config = config('scanner.settings');
   global $user;
 
   // Variables to monitor possible timeout.
@@ -712,13 +725,13 @@ function scanner_execute($searchtype = 'search') {
   $expanded = FALSE;
 
   // Get process and undo data if saved from timeout.
-  $processed = variable_get('scanner_partially_processed_' . $user->uid, array());
-  $undo_data = variable_get('scanner_partial_undo_' . $user->uid, array());
+  $processed = $config->get('scanner_partially_processed_' . $user->uid);
+  $undo_data = $config->get('scanner_partial_undo_' . $user->uid);
 
   // Get the field collection field to use when joining revisions, based on
   // whether the current version of the field_collection module has revisions
   // enabled (7.x-1.0-beta5)
-  $fc_revision_field = drupal_get_schema('field_collection_item_revision') ? 'revision_id' : 'value';
+  $fc_revision_field = backdrop_get_schema('field_collection_item_revision') ? 'revision_id' : 'value';
 
   unset($_SESSION['scanner_status']);
   $search      = $_SESSION['scanner_search'];
@@ -727,7 +740,7 @@ function scanner_execute($searchtype = 'search') {
   $followed    = $_SESSION['scanner_followed'];
   $mode        = $_SESSION['scanner_mode'];
   // Case sensitivity flag for use in php preg_search and preg_replace.
-  $flag        = $mode ? NULL : 'i';
+  $flag        = $mode?NULL : 'i';
   $wholeword   = $_SESSION['scanner_wholeword'];
   $regex       = $_SESSION['scanner_regex'];
   $published   = $_SESSION['scanner_published'];
@@ -736,11 +749,11 @@ function scanner_execute($searchtype = 'search') {
   $results     = NULL;
 
   if ($searchtype == 'search') {
-    drupal_set_message(t('Searching for: [%search] ...', array('%search' => $search)));
+    backdrop_set_message(t('Searching for: [%search] ...', array('%search' => $search)));
   }
   // searchtype == 'replace'.
   else {
-    drupal_set_message(t('Replacing [%search] with [%replace] ...', array('%search' => $search, '%replace' => $replace)));
+    backdrop_set_message(t('Replacing [%search] with [%replace] ...', array('%search' => $search, '%replace' => $replace)));
   }
 
   $preceded_php = '';
@@ -811,7 +824,7 @@ function scanner_execute($searchtype = 'search') {
     // Allow the table suffix to be altered.
     $suffix = 'value';
     // Trigger hook_scanner_field_suffix_alter().
-    drupal_alter('scanner_field_suffix', $suffix, $map);
+    backdrop_alter('scanner_field_suffix', $suffix, $map);
 
     $query = db_select($table, 't');
     if ($table == 'node_revision') {
@@ -902,7 +915,7 @@ function scanner_execute($searchtype = 'search') {
             $verbose = FALSE;
           }
           if (_scanner_change_env('max_execution_time', '600', $verbose)) {
-            drupal_set_message(t('Default max_execution_time too small and changed to 10 minutes.'), 'error');
+            backdrop_set_message(t('Default max_execution_time too small and changed to 10 minutes.'), 'error');
             $max_execution_time = 600;
           }
           $expanded = TRUE;
@@ -910,13 +923,13 @@ function scanner_execute($searchtype = 'search') {
         // If expanded environment still running out of time, shutdown process.
         else {
           $shutting_down = TRUE;
-          variable_set('scanner_partially_processed_' . $user->uid, $processed);
-          variable_set('scanner_partial_undo_' . $user->uid, $undo_data);
+          config_set('scanner.settings', 'scanner_partially_processed_' . $user->uid, $processed);
+          config_set('scanner.settings', 'scanner_partial_undo_' . $user->uid, $undo_data);
           if ($searchtype == 'search') {
-            drupal_set_message(t('Did not have enough time to complete search.'), 'error');
+            backdrop_set_message(t('Did not have enough time to complete search.'), 'error');
           }
           else {
-            drupal_set_message(t('Did not have enough time to complete. Please re-submit replace'), 'error');
+            backdrop_set_message(t('Did not have enough time to complete. Please re-submit replace'), 'error');
           }
           break 2;
         }
@@ -949,7 +962,7 @@ function scanner_execute($searchtype = 'search') {
             foreach ($item as $match) {
               $text .= '<li>';
               // if ($key == 1) {
-              //   $text .= '<i>Summary:</i> ';
+//   $text .= '<i>Summary:</i> ';
               // }
 
               // Don't want substr to wrap.
@@ -1007,7 +1020,7 @@ function scanner_execute($searchtype = 'search') {
           if (!empty($id)) {
             module_load_include('inc', 'pathauto');
             $uri = entity_uri('node', $node);
-            $path = drupal_get_path_alias($uri['path']);
+            $path = backdrop_get_path_alias($uri['path']);
             $pathauto_alias = pathauto_create_alias('node', 'return', $uri['path'], array('node' => $node), $bundle);
             $node->path['pathauto'] = ($path != $uri['path'] && $path == $pathauto_alias);
           }
@@ -1115,8 +1128,8 @@ function scanner_execute($searchtype = 'search') {
 
   // If completed.
   if (isset($shutting_down) && !$shutting_down) {
-    variable_del('scanner_partially_processed_' . $user->uid);
-    variable_del('scanner_partial_undo_' . $user->uid);
+    config_clear('scanner.settings', 'scanner_partially_processed_' . $user->uid);
+    config_clear('scanner.settings', 'scanner_partial_undo_' . $user->uid);
   }
 
   if ($searchtype == 'search') {
@@ -1127,13 +1140,13 @@ function scanner_execute($searchtype = 'search') {
     if (count($undo_data) && !$shutting_down) {
       db_insert('scanner')
         ->fields(array(
-          'undo_data' => serialize($undo_data),
-          'undone' => 0,
-          'searched' => $search,
-          'replaced' => $replace,
-          'count' => count($undo_data),
-          'time' => REQUEST_TIME,
-        ))
+        'undo_data' => serialize($undo_data),
+        'undone' => 0,
+        'searched' => $search,
+        'replaced' => $replace,
+        'count' => count($undo_data),
+        'time' => REQUEST_TIME,
+      ))
         ->execute();
     }
 
@@ -1252,12 +1265,12 @@ function _scanner_get_all_tables_map() {
   // Trigger hook_scanner_field_types().
   foreach (module_invoke_all('scanner_field_types') as $field_type) {
     $query = db_select('field_config_instance', 'fci');
-    $query->join('field_config', 'fc', 'fci.field_name = fc.field_name');
+    /*$query->join('field_config', 'fc', 'fci.field_name = fc.field_name');*/
     $query->fields('fci', array('field_name'));
-    $query->fields('fc', array('module'));
+    /*$query->fields('fc', array('module'));*/
     $query->addField('fci', 'bundle', 'node_bundle');
     $query->condition('fci.entity_type', 'node');
-    $query->condition('fc.module', $field_type, '=');
+    /*$query->condition('fc.module', $field_type, '=');*/
 
     foreach ($query->execute() as $record) {
       $all_field_records[] = $record;
@@ -1265,7 +1278,7 @@ function _scanner_get_all_tables_map() {
   }
 
   // Trigger hook_scanner_fields_alter().
-  drupal_alter('scanner_fields', $all_field_records);
+  backdrop_alter('scanner_fields', $all_field_records);
 
   if (!empty($all_field_records)) {
     foreach ($all_field_records as $record) {
@@ -1292,6 +1305,7 @@ function _scanner_get_selected_tables_map() {
   $tables_map = _scanner_get_all_tables_map();
   foreach ($tables_map as $i => $item) {
     $key = 'scanner_' . $item['field'] . '_' . $item['table'] . '_' . $item['type'];
+    // TODO This variable was probably removed in Backdrop without replacement.
     if (!variable_get($key, TRUE)) {
       unset($tables_map[$i]);
     }
@@ -1324,13 +1338,13 @@ function _scanner_change_env($setting, $value, $verbose = FALSE) {
   if ($old_value != $value && $old_value != 0) {
     if (ini_set($setting, $value)) {
       if ($verbose) {
-        drupal_set_message(t('%setting changed from %old_value to %value.', array('%setting' => $setting, '%old_value' => $old_value, '%value' => $value)));
+        backdrop_set_message(t('%setting changed from %old_value to %value.', array('%setting' => $setting, '%old_value' => $old_value, '%value' => $value)));
       }
       return TRUE;
     }
     else {
       if ($verbose) {
-        drupal_set_message(t('%setting could not be changed from %old_value to %value.', array('%setting' => $setting, '%old_value' => $old_value, '%value' => $value)), 'error');
+        backdrop_set_message(t('%setting could not be changed from %old_value to %value.', array('%setting' => $setting, '%old_value' => $old_value, '%value' => $value)), 'error');
       }
       return FALSE;
     }

@@ -25,3 +25,11 @@ function scanner_with_link_tests_node_presave($node) {
     }
   }
 }
+
+/**
+ * Implements hook_autoload_info().
+ */
+function scanner_with_link_tests_autoload_info() {
+  return array(
+  );
+}
